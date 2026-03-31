@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { VitePWA } from 'vite-plugin-pwa';
 import type { Plugin } from 'vite';
 
 function basicAuthPlugin(): Plugin {
@@ -35,44 +34,6 @@ export default defineConfig({
   plugins: [
     basicAuthPlugin(),
     vue(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['charteris-white-icon.svg'],
-      manifest: {
-        name: 'Charteris',
-        short_name: 'Charteris',
-        description: 'Personal task management dashboard',
-        theme_color: '#000000',
-        background_color: '#000000',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          {
-            src: '/icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-        ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/v1\/.*/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-            },
-          },
-        ],
-      },
-    }),
   ],
   server: {
     host: '0.0.0.0',
