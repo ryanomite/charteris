@@ -32,6 +32,10 @@
   /* Accent */
   --accent: #457B9D;
 
+  /* Semantic colours */
+  --color-complete: #4caf50;
+  --color-label: #00dcdc;
+
   /* Transitions */
   --transition-default: 200ms ease-in-out;
 }

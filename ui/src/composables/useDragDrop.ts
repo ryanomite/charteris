@@ -1,11 +1,14 @@
 import { ref } from 'vue';
 import api from '../services/api';
 import { useTaskStore } from '../stores/taskStore';
-import type { ICard } from '../types';
+import type { ICard, IList } from '../types';
 
 // Shared drag state
 export const dragCard = ref<ICard | null>(null);
 export const dragSourceListId = ref<string | null>(null);
+
+// List drag state
+export const dragList = ref<IList | null>(null);
 
 export function useDragDrop() {
   const store = useTaskStore();
@@ -67,5 +70,35 @@ export function useDragDrop() {
     dragSourceListId.value = null;
   }
 
-  return { dragCard, dragSourceListId, onDragStart, onDragEnd, canDrop, onDrop };
+  function onListDragStart(list: IList, e: DragEvent) {
+    dragList.value = list;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', list._id);
+    }
+  }
+
+  function onListDragEnd() {
+    dragList.value = null;
+  }
+
+  // dropBefore: true = place before target, false = place after target
+  async function onListDrop(targetList: IList, dropBefore: boolean) {
+    const list = dragList.value;
+    if (!list || list._id === targetList._id || list.sectionId !== targetList.sectionId) return;
+
+    const targetOrder = dropBefore ? targetList.order : targetList.order + 1;
+
+    try {
+      await api.patch(`/lists/${list._id}/reorder`, { order: targetOrder });
+      await store.fetchDashboard();
+    } catch (err) {
+      console.error('List reorder failed:', err);
+    }
+
+    dragList.value = null;
+  }
+
+  return { dragCard, dragSourceListId, onDragStart, onDragEnd, canDrop, onDrop,
+           dragList, onListDragStart, onListDragEnd, onListDrop };
 }

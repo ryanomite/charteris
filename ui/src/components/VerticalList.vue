@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
-import { useDragDrop, dragCard } from '../composables/useDragDrop';
+import { useDragDrop, dragCard, dragList } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
 import api from '../services/api';
 import TaskCard from './TaskCard.vue';
@@ -10,7 +10,7 @@ import type { IList, ISection, ICard } from '../types';
 const props = defineProps<{ list: IList; section: ISection }>();
 const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
 const store = useTaskStore();
-const { canDrop, onDrop } = useDragDrop();
+const { canDrop, onDrop, onListDragStart, onListDragEnd, onListDrop } = useDragDrop();
 
 const cards = computed(() => store.cardsForList(props.list._id));
 
@@ -24,6 +24,10 @@ const menuOpen = ref(false);
 const renaming = ref(false);
 const renameValue = ref('');
 const renameInputRef = ref<HTMLInputElement | null>(null);
+
+// List drag-reorder state
+const isListDragOver = ref(false);
+const listDropBefore = ref(true);
 
 const droppable = computed(() => canDrop(props.list._id, props.section.slug));
 const isSameListDrag = computed(() => dragCard.value?.listId === props.list._id);
@@ -175,11 +179,67 @@ async function archiveList() {
     console.error('Archive list failed:', err);
   }
 }
+
+// --- List header drag-to-reorder ---
+
+function onListHeaderDragStart(e: DragEvent) {
+  if (dragCard.value) { e.preventDefault(); return; } // card drag takes priority
+  if (props.list.isFixed) { e.preventDefault(); return; }
+  onListDragStart(props.list, e);
+}
+
+function onListHeaderDragEnd() {
+  onListDragEnd();
+  isListDragOver.value = false;
+}
+
+function onListDragOverSelf(e: DragEvent) {
+  if (!dragList.value || dragList.value._id === props.list._id) return;
+  if (dragList.value.sectionId !== props.list.sectionId) return;
+  e.preventDefault();
+  e.stopPropagation();
+  isListDragOver.value = true;
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  listDropBefore.value = e.clientX < rect.left + rect.width / 2;
+}
+
+function onListDragLeaveSelf(e: DragEvent) {
+  // Only clear if we're leaving the list element itself (not entering a child)
+  if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+    isListDragOver.value = false;
+  }
+}
+
+async function onListDropSelf(e: DragEvent) {
+  if (!dragList.value || dragList.value._id === props.list._id) return;
+  e.preventDefault();
+  e.stopPropagation();
+  isListDragOver.value = false;
+  await onListDrop(props.list, listDropBefore.value);
+}
 </script>
 
 <template>
-  <div class="list" :class="{ 'list--drag-over': isOver && droppable }" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
-    <div class="list__header">
+  <div
+    class="list"
+    :class="{
+      'list--drag-over': isOver && droppable,
+      'list--dragging': dragList?._id === list._id,
+      'list--list-drop-before': isListDragOver && listDropBefore,
+      'list--list-drop-after': isListDragOver && !listDropBefore,
+    }"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
+    @dragover="onListDragOverSelf"
+    @dragleave="onListDragLeaveSelf"
+    @drop="onListDropSelf"
+  >
+    <div
+      class="list__header"
+      :draggable="!dragCard && !list.isFixed"
+      @dragstart="onListHeaderDragStart"
+      @dragend="onListHeaderDragEnd"
+    >
       <input
         v-if="renaming"
         ref="renameInputRef"
@@ -414,6 +474,27 @@ async function archiveList() {
 .list--drag-over {
   outline: 2px dashed var(--accent, #457B9D);
   outline-offset: -2px;
+}
+
+.list--dragging {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.list--list-drop-before {
+  border-left: 3px solid var(--accent, #457B9D);
+}
+
+.list--list-drop-after {
+  border-right: 3px solid var(--accent, #457B9D);
+}
+
+.list__header {
+  cursor: grab;
+}
+
+.list__header:active {
+  cursor: grabbing;
 }
 
 .drop-indicator {

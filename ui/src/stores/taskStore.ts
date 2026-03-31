@@ -38,7 +38,7 @@ export const useTaskStore = defineStore('tasks', () => {
       .sort((a, b) => a.order - b.order);
   }
 
-  // Get cards for a list, sorted by task priority then card order (excluding archived tasks)
+  // Get cards for a list, sorted by: incomplete first → priority (null last) → completed last → order
   function cardsForList(listId: string): ICard[] {
     return cards.value
       .filter(c => {
@@ -49,6 +49,11 @@ export const useTaskStore = defineStore('tasks', () => {
       .sort((a, b) => {
         const taskA = tasks.value.find(t => t._id === a.taskId);
         const taskB = tasks.value.find(t => t._id === b.taskId);
+        // Completed cards go to the bottom
+        const compA = taskA?.completed ? 1 : 0;
+        const compB = taskB?.completed ? 1 : 0;
+        if (compA !== compB) return compA - compB;
+        // Then by priority (null = lowest)
         const pA = taskA?.priority ?? 99;
         const pB = taskB?.priority ?? 99;
         if (pA !== pB) return pA - pB;
@@ -64,6 +69,13 @@ export const useTaskStore = defineStore('tasks', () => {
   // Get label by ID
   function labelById(labelId: string): ILabel | undefined {
     return labels.value.find(l => l._id === labelId);
+  }
+
+  // Get all labels for a task
+  function labelsForTask(taskId: string): ILabel[] {
+    const task = taskById(taskId);
+    if (!task?.labels?.length) return [];
+    return task.labels.map(id => labelById(id)).filter(Boolean) as ILabel[];
   }
 
   // --- Mutations for WebSocket / local updates ---
@@ -113,7 +125,7 @@ export const useTaskStore = defineStore('tasks', () => {
   return {
     sections, lists, tasks, cards, labels, loading,
     sortedSections, fetchDashboard,
-    listsForSection, cardsForList, taskById, labelById,
+    listsForSection, cardsForList, taskById, labelById, labelsForTask,
     upsertTask, removeTask,
     upsertCard, removeCard,
     upsertList, removeList,

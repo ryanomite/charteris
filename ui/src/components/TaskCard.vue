@@ -32,17 +32,25 @@ const isDragging = computed(() => dragCard.value?._id === props.card._id);
 const dueStatus = computed(() => {
   const d = task.value?.dueDate;
   if (!d) return null;
-  const due = new Date(d);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  // Parse date string directly to local time (YYYY-MM-DD), avoiding UTC midnight offset
+  const parts = d.split('-').map(Number);
+  const dueDay = new Date(parts[0], parts[1] - 1, parts[2]);
 
   if (dueDay < today) return 'overdue';
   if (dueDay.getTime() === today.getTime()) return 'due-today';
   if (dueDay.getTime() === tomorrow.getTime()) return 'due-tomorrow';
   return null;
+});
+
+const taskLabels = computed(() => {
+  if (!task.value?.labels?.length) return [];
+  return task.value.labels
+    .map(id => store.labelById(id))
+    .filter(Boolean);
 });
 
 function onClick(e: MouseEvent) {
@@ -91,10 +99,16 @@ async function toggleComplete(e: MouseEvent) {
     </div>
     <div class="card__body">
       <span class="card__title">{{ task.title }}</span>
-      <span v-if="dueStatus" class="card__due" :class="`card__due--${dueStatus}`">
-        <i class="fas fa-clock"></i>
-        {{ dueStatus === 'overdue' ? 'Overdue' : dueStatus === 'due-today' ? 'Today' : 'Tomorrow' }}
-      </span>
+      <div v-if="dueStatus || taskLabels.length" class="card__tags">
+        <span v-if="dueStatus" class="card__due" :class="`card__due--${dueStatus}`">
+          <i class="fas fa-clock"></i>
+          {{ dueStatus === 'overdue' ? 'Overdue' : dueStatus === 'due-today' ? 'Today' : 'Tomorrow' }}
+        </span>
+        <span v-for="label in taskLabels" :key="label!._id" class="card__label">
+          <i class="fas fa-tag"></i>
+          {{ label!.name }}
+        </span>
+      </div>
     </div>
     <div class="card__hover-right">
       <button class="card__action" title="Move card">
@@ -143,15 +157,27 @@ async function toggleComplete(e: MouseEvent) {
   box-shadow: 0 0 0 1px var(--accent, #457B9D);
 }
 
-.card__due {
+.card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.card__due,
+.card__label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 0.6875rem;
-  margin-top: 4px;
   padding: 1px 6px;
   border-radius: 3px;
   font-weight: 600;
+}
+
+.card__label {
+  color: var(--color-label);
+  background: rgba(0, 220, 220, 0.12);
 }
 
 .card__due--overdue {
@@ -189,8 +215,13 @@ async function toggleComplete(e: MouseEvent) {
 }
 
 .card:hover .card__hover-left,
-.card:hover .card__hover-right {
+.card:hover .card__hover-right,
+.card--complete .card__hover-left {
   opacity: 1;
+}
+
+.card--complete .card__check i {
+  color: var(--color-complete);
 }
 
 .card__hover-left {
