@@ -12,6 +12,7 @@ export interface IList {
   sectionId: string;
   order: number;
   isFixed: boolean;
+  archived: boolean;
 }
 
 export interface ISubtask {

@@ -8,17 +8,19 @@ function toList(row: any): List {
     sectionId: row.sectionId,
     order: row.order,
     isFixed: !!row.isFixed,
+    archived: !!row.archived,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
-export function findAllLists(filter?: { sectionId?: string }): List[] {
+export function findAllLists(filter?: { sectionId?: string; includeArchived?: boolean }): List[] {
+  const archivedClause = filter?.includeArchived ? '' : ' AND archived = 0';
   if (filter?.sectionId) {
-    return getDb().prepare('SELECT * FROM lists WHERE sectionId = ? ORDER BY "order" ASC')
+    return getDb().prepare(`SELECT * FROM lists WHERE sectionId = ?${archivedClause} ORDER BY "order" ASC`)
       .all(filter.sectionId).map(toList);
   }
-  return getDb().prepare('SELECT * FROM lists ORDER BY "order" ASC').all().map(toList);
+  return getDb().prepare(`SELECT * FROM lists WHERE 1=1${archivedClause} ORDER BY "order" ASC`).all().map(toList);
 }
 
 export function findListById(id: string): List | null {
@@ -48,6 +50,12 @@ export function updateList(id: string, data: { name?: string; order?: number }):
   if (data.order !== undefined) {
     getDb().prepare('UPDATE lists SET "order" = ?, updatedAt = ? WHERE id = ?').run(data.order, ts, id);
   }
+  return findListById(id);
+}
+
+export function archiveList(id: string): List | null {
+  const ts = now();
+  getDb().prepare('UPDATE lists SET archived = 1, updatedAt = ? WHERE id = ?').run(ts, id);
   return findListById(id);
 }
 

@@ -16,6 +16,7 @@ export interface List {
   sectionId: string;
   order: number;
   isFixed: boolean;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 }

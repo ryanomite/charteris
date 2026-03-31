@@ -8,7 +8,7 @@
   --bg-section-board: #072e48;
   --bg-card: #303030;
   --bg-card-hover: #3a3a3a;
-  --bg-list: rgba(0, 0, 0, 0.25);
+  --bg-list: rgba(0, 0, 0, 0.75);
 
   /* Priority Top Border Colors */
   --priority-1: #D90429;  /* Critical — Red */
@@ -25,7 +25,7 @@
   --radius-section: 12px;
   --radius-card: 8px;
   --radius-list: 8px;
-  --gap-main: 16px;
+  --gap-main: 20px;
   --gap-list: 12px;
   --pad-card: 12px;
 

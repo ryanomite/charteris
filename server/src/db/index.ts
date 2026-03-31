@@ -27,6 +27,7 @@ export function initDb(): Database.Database {
   db.pragma('busy_timeout = 5000');
 
   createTables();
+  runMigrations();
   seedIfEmpty();
 
   return db;
@@ -110,6 +111,13 @@ function createTables(): void {
     CREATE INDEX IF NOT EXISTS idx_cards_list_order ON cards(listId, "order");
     CREATE INDEX IF NOT EXISTS idx_cards_taskId ON cards(taskId);
   `);
+}
+
+function runMigrations(): void {
+  const cols = (db.prepare('PRAGMA table_info(lists)').all() as any[]).map((r: any) => r.name);
+  if (!cols.includes('archived')) {
+    db.exec('ALTER TABLE lists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
+  }
 }
 
 function seedIfEmpty(): void {

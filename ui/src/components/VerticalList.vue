@@ -20,6 +20,11 @@ const adding = ref(false);
 const newTitle = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 
+const menuOpen = ref(false);
+const renaming = ref(false);
+const renameValue = ref('');
+const renameInputRef = ref<HTMLInputElement | null>(null);
+
 const droppable = computed(() => canDrop(props.list._id, props.section.slug));
 const isSameListDrag = computed(() => dragCard.value?.listId === props.list._id);
 
@@ -30,7 +35,6 @@ function onDragOver(e: DragEvent) {
   isOver.value = true;
 
   if (isSameListDrag.value) {
-    // Same-list reorder: show precise drop indicator
     const container = (e.currentTarget as HTMLElement);
     const cardElements = Array.from(container.querySelectorAll('.card'));
     let idx = cardElements.length;
@@ -43,7 +47,6 @@ function onDragOver(e: DragEvent) {
     }
     dropIndex.value = idx;
   } else {
-    // Cross-list: just highlight the list, drop to bottom
     dropIndex.value = -1;
   }
 }
@@ -80,14 +83,11 @@ async function submitNewCard() {
     return;
   }
   try {
-    // Create the task first
     const { data: task } = await api.post('/tasks', { title: t });
     store.upsertTask(task);
-    // Create a card for it in this list
     const { data: card } = await api.post('/cards', { taskId: task._id, listId: props.list._id });
     store.upsertCard(card);
     newTitle.value = '';
-    // Keep input open for rapid entry
     nextTick(() => inputRef.value?.focus());
   } catch (err) {
     console.error('Create card failed:', err);
@@ -117,15 +117,111 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('charteris:quick-add', handleQuickAdd);
 });
+
+// --- List context menu ---
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+}
+
+function closeMenu() {
+  menuOpen.value = false;
+}
+
+function startRename() {
+  closeMenu();
+  renameValue.value = props.list.name;
+  renaming.value = true;
+  nextTick(() => renameInputRef.value?.focus());
+}
+
+function cancelRename() {
+  renaming.value = false;
+}
+
+async function submitRename() {
+  const name = renameValue.value.trim();
+  renaming.value = false;
+  if (!name || name === props.list.name) return;
+  try {
+    const { data } = await api.put(`/lists/${props.list._id}`, { name });
+    store.upsertList(data);
+  } catch (err) {
+    console.error('Rename list failed:', err);
+  }
+}
+
+async function archiveAllTasks() {
+  closeMenu();
+  if (!confirm(`Archive all tasks in "${props.list.name}"?`)) return;
+  const BATCH = 5;
+  const listCards = [...cards.value];
+  for (let i = 0; i < listCards.length; i += BATCH) {
+    const batch = listCards.slice(i, i + BATCH);
+    await Promise.all(batch.map(async card => {
+      const { data } = await api.patch(`/tasks/${card.taskId}/archive`);
+      store.upsertTask(data);
+    }));
+  }
+}
+
+async function archiveList() {
+  closeMenu();
+  if (!confirm(`Archive "${props.list.name}" and all its tasks?`)) return;
+  try {
+    const { data } = await api.patch(`/lists/${props.list._id}/archive`);
+    store.removeList(data._id);
+  } catch (err) {
+    console.error('Archive list failed:', err);
+  }
+}
 </script>
 
 <template>
   <div class="list" :class="{ 'list--drag-over': isOver && droppable }" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave">
     <div class="list__header">
-      <span class="list__title">{{ list.name }}</span>
-      <button class="list__menu" title="List menu">
-        <i class="fas fa-ellipsis-h"></i>
-      </button>
+      <input
+        v-if="renaming"
+        ref="renameInputRef"
+        v-model="renameValue"
+        class="list__rename-input"
+        @keydown.enter.prevent="submitRename"
+        @keydown.escape="cancelRename"
+        @blur="submitRename"
+      />
+      <span v-else class="list__title">{{ list.name }}</span>
+      <div class="list__menu-wrap" @keydown.escape="closeMenu">
+        <button
+          class="list__menu"
+          :aria-expanded="menuOpen"
+          aria-haspopup="menu"
+          title="List menu"
+          @click="toggleMenu"
+        >
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+        <ul v-if="menuOpen" class="dropdown" role="menu" @click.stop>
+          <li v-if="!list.isFixed" role="none">
+            <button role="menuitem" class="dropdown__item" @click="startRename">
+              <i class="fas fa-pencil-alt"></i>
+              Edit name
+            </button>
+          </li>
+          <li role="none">
+            <button role="menuitem" class="dropdown__item" @click="archiveAllTasks">
+              <i class="fas fa-archive"></i>
+              Archive all tasks
+            </button>
+          </li>
+          <li v-if="!list.isFixed" role="none">
+            <button role="menuitem" class="dropdown__item dropdown__item--danger" @click="archiveList">
+              <i class="fas fa-times-circle"></i>
+              Archive list
+            </button>
+          </li>
+        </ul>
+        <div v-if="menuOpen" class="dropdown__backdrop" @click="closeMenu"></div>
+      </div>
     </div>
     <div
       class="list__cards"
@@ -180,6 +276,27 @@ onUnmounted(() => {
 .list__title {
   font-weight: 600;
   font-size: 0.875rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.list__rename-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--accent, #457B9D);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+}
+
+.list__menu-wrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .list__menu {
@@ -193,6 +310,59 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 190px;
+  background: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px;
+  list-style: none;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--transition-default);
+}
+
+.dropdown__item:hover,
+.dropdown__item:focus {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.dropdown__item i {
+  width: 16px;
+  text-align: center;
+  color: var(--icon-ui);
+}
+
+.dropdown__item--danger {
+  color: #ff6b6b;
+}
+
+.dropdown__item--danger i {
+  color: #ff6b6b;
+}
+
+.dropdown__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
+}
+
 .list__cards {
   flex: 1;
   overflow-y: auto;
@@ -200,7 +370,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 0;
+  min-height: 48px;
 }
 
 .list__add {

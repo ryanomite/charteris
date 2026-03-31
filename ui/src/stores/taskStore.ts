@@ -31,14 +31,14 @@ export const useTaskStore = defineStore('tasks', () => {
     [...sections.value].sort((a, b) => a.order - b.order)
   );
 
-  // Get lists for a section, sorted by order
+  // Get lists for a section, sorted by order (excluding archived)
   function listsForSection(sectionId: string): IList[] {
     return lists.value
-      .filter(l => l.sectionId === sectionId)
+      .filter(l => l.sectionId === sectionId && !l.archived)
       .sort((a, b) => a.order - b.order);
   }
 
-  // Get cards for a list, sorted by order (excluding archived tasks)
+  // Get cards for a list, sorted by task priority then card order (excluding archived tasks)
   function cardsForList(listId: string): ICard[] {
     return cards.value
       .filter(c => {
@@ -46,7 +46,14 @@ export const useTaskStore = defineStore('tasks', () => {
         const task = tasks.value.find(t => t._id === c.taskId);
         return task && !task.archived;
       })
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => {
+        const taskA = tasks.value.find(t => t._id === a.taskId);
+        const taskB = tasks.value.find(t => t._id === b.taskId);
+        const pA = taskA?.priority ?? 99;
+        const pB = taskB?.priority ?? 99;
+        if (pA !== pB) return pA - pB;
+        return a.order - b.order;
+      });
   }
 
   // Get task by ID

@@ -33,8 +33,16 @@ function toggleSection(slug: string) {
 useKeyboardShortcuts(openCard);
 const { connected } = useWebSocket();
 
-onMounted(() => {
-  store.fetchDashboard();
+onMounted(async () => {
+  await store.fetchDashboard();
+  // Auto-hide inbox if Draft list has no cards
+  const inboxSection = store.sortedSections.find(s => s.slug === 'inbox');
+  if (inboxSection) {
+    const draftList = store.listsForSection(inboxSection._id).find(l => l.name === 'Draft');
+    if (draftList && store.cardsForList(draftList._id).length === 0) {
+      hiddenSlugs.value = new Set(['inbox']);
+    }
+  }
 });
 </script>
 
@@ -75,13 +83,14 @@ onMounted(() => {
 .app-header {
   display: flex;
   align-items: center;
-  padding: 10px 16px 0;
+  padding: 10px var(--gap-main) 0;
   flex-shrink: 0;
 }
 
 .app-header__logo {
   height: 56px;
   opacity: 0.85;
+  filter: drop-shadow(0 0 8px rgba(0, 220, 220, 0.55));
 }
 
 .dashboard {

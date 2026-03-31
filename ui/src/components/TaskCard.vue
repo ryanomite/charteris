@@ -121,6 +121,10 @@ async function toggleComplete(e: MouseEvent) {
   background: var(--bg-card-hover);
 }
 
+.card--complete {
+  opacity: 0.75;
+}
+
 .card--complete .card__title {
   text-decoration: line-through;
   opacity: 0.5;

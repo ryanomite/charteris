@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import VerticalList from './VerticalList.vue';
+import api from '../services/api';
 import type { ISection, ICard } from '../types';
 
 const props = defineProps<{ section: ISection }>();
@@ -9,6 +10,7 @@ const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
 const store = useTaskStore();
 
 const sectionLists = computed(() => store.listsForSection(props.section._id));
+const menuOpen = ref(false);
 
 const bgVar = computed(() => {
   const map: Record<string, string> = {
@@ -20,6 +22,46 @@ const bgVar = computed(() => {
 });
 
 const sectionClass = computed(() => `section section--${props.section.slug}`);
+
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value;
+}
+
+function closeMenu() {
+  menuOpen.value = false;
+}
+
+async function addList() {
+  closeMenu();
+  const name = prompt('List name:');
+  if (!name?.trim()) return;
+  try {
+    const { data } = await api.post('/lists', { name: name.trim(), sectionId: props.section._id });
+    store.upsertList(data);
+  } catch (err) {
+    console.error('Add list failed:', err);
+  }
+}
+
+async function moveAllToList(fromName: string, toName: string) {
+  closeMenu();
+  const fromList = sectionLists.value.find(l => l.name === fromName);
+  const toList = sectionLists.value.find(l => l.name === toName);
+  if (!fromList || !toList) return;
+
+  const cards = store.cardsForList(fromList._id);
+  const BATCH = 5;
+  for (let i = 0; i < cards.length; i += BATCH) {
+    const batch = cards.slice(i, i + BATCH);
+    await Promise.all(batch.map((card, idx) =>
+      api.patch(`/cards/${card._id}/move`, {
+        targetListId: toList._id,
+        order: store.cardsForList(toList._id).length + idx,
+      })
+    ));
+  }
+  await store.fetchDashboard();
+}
 </script>
 
 <template>
@@ -29,9 +71,46 @@ const sectionClass = computed(() => `section section--${props.section.slug}`);
         <i :class="['fas', section.icon]"></i>
         <span>{{ section.name }}</span>
       </div>
-      <button class="section__menu" title="Section menu">
-        <i class="fas fa-ellipsis-h"></i>
-      </button>
+      <div
+        v-if="section.slug === 'board' || section.slug === 'planning'"
+        class="section__menu-wrap"
+        @keydown.escape="closeMenu"
+      >
+        <button
+          class="section__menu"
+          :aria-expanded="menuOpen"
+          aria-haspopup="menu"
+          :title="`${section.name} menu`"
+          @click="toggleMenu"
+        >
+          <i class="fas fa-ellipsis-h"></i>
+        </button>
+        <ul v-if="menuOpen" class="dropdown" role="menu" @click.stop>
+          <template v-if="section.slug === 'board'">
+            <li role="none">
+              <button role="menuitem" class="dropdown__item" @click="addList">
+                <i class="fas fa-plus"></i>
+                Add new list
+              </button>
+            </li>
+          </template>
+          <template v-if="section.slug === 'planning'">
+            <li role="none">
+              <button role="menuitem" class="dropdown__item" @click="moveAllToList('Today', 'Next')">
+                <i class="fas fa-arrow-right"></i>
+                Move all to Next
+              </button>
+            </li>
+            <li role="none">
+              <button role="menuitem" class="dropdown__item" @click="moveAllToList('Next', 'Today')">
+                <i class="fas fa-arrow-left"></i>
+                Move all to Today
+              </button>
+            </li>
+          </template>
+        </ul>
+        <div v-if="menuOpen" class="dropdown__backdrop" @click="closeMenu"></div>
+      </div>
     </div>
     <div class="section__body">
       <VerticalList
@@ -53,12 +132,6 @@ const sectionClass = computed(() => `section section--${props.section.slug}`);
   overflow: hidden;
   min-height: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
-}
-
-.section--inbox {
-}
-
-.section--planning {
 }
 
 .section--board {
@@ -86,6 +159,10 @@ const sectionClass = computed(() => `section section--${props.section.slug}`);
   color: var(--text-primary);
 }
 
+.section__menu-wrap {
+  position: relative;
+}
+
 .section__menu {
   color: var(--icon-ui);
   padding: 4px 8px;
@@ -95,6 +172,51 @@ const sectionClass = computed(() => `section section--${props.section.slug}`);
 
 .section__menu:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  background: #1e1e2e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 4px;
+  list-style: none;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--transition-default);
+}
+
+.dropdown__item:hover,
+.dropdown__item:focus {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.dropdown__item i {
+  width: 16px;
+  text-align: center;
+  color: var(--icon-ui);
+}
+
+.dropdown__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 199;
 }
 
 .section__body {
@@ -117,6 +239,7 @@ const sectionClass = computed(() => `section section--${props.section.slug}`);
 .section--planning .section__body {
   overflow-x: hidden;
 }
+</style>
 
 /* Mobile */
 @media (max-width: 768px) {
