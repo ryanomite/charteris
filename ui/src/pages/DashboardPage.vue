@@ -88,8 +88,8 @@ onMounted(async () => {
 }
 
 .app-header__logo {
-  height: 56px;
-  opacity: 0.85;
+  height: 47px;
+  opacity: 0.92;
   filter: drop-shadow(0 0 6px rgba(0, 230, 230, 0.95)) drop-shadow(0 0 18px rgba(0, 210, 220, 0.8)) drop-shadow(0 0 40px rgba(0, 180, 210, 0.6));
 }
 
@@ -124,7 +124,7 @@ onMounted(async () => {
   .dashboard {
     flex-direction: column;
     overflow: visible;
-    padding-bottom: 72px; /* space for mobile nav */
+    padding-bottom: var(--gap-main);
   }
 }
 
@@ -151,27 +151,27 @@ onMounted(async () => {
 
 .stars--small {
   background-image:
-    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.3), transparent),
-    radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,0.25), transparent),
-    radial-gradient(1px 1px at 160px 60px, rgba(255,255,255,0.2), transparent),
-    radial-gradient(1px 1px at 240px 180px, rgba(255,255,255,0.3), transparent),
-    radial-gradient(1px 1px at 320px 90px, rgba(255,255,255,0.15), transparent),
-    radial-gradient(1px 1px at 400px 200px, rgba(255,255,255,0.25), transparent),
-    radial-gradient(1px 1px at 50px 250px, rgba(255,255,255,0.2), transparent),
-    radial-gradient(1px 1px at 180px 300px, rgba(255,255,255,0.3), transparent),
-    radial-gradient(1px 1px at 350px 280px, rgba(255,255,255,0.15), transparent),
-    radial-gradient(1px 1px at 450px 50px, rgba(255,255,255,0.25), transparent);
+    radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 160px 60px, rgba(255,255,255,0.45), transparent),
+    radial-gradient(1px 1px at 240px 180px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 320px 90px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 400px 200px, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 50px 250px, rgba(255,255,255,0.45), transparent),
+    radial-gradient(1px 1px at 180px 300px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 350px 280px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 450px 50px, rgba(255,255,255,0.5), transparent);
   background-size: 500px 350px;
 }
 
 .stars--medium {
   background-image:
-    radial-gradient(1.5px 1.5px at 100px 150px, rgba(255,255,255,0.4), transparent),
-    radial-gradient(1.5px 1.5px at 300px 80px, rgba(255,255,255,0.35), transparent),
-    radial-gradient(1.5px 1.5px at 200px 250px, rgba(255,255,255,0.3), transparent),
-    radial-gradient(1.5px 1.5px at 450px 180px, rgba(255,255,255,0.4), transparent),
-    radial-gradient(1.5px 1.5px at 50px 320px, rgba(255,255,255,0.25), transparent),
-    radial-gradient(1.5px 1.5px at 380px 340px, rgba(255,255,255,0.35), transparent);
+    radial-gradient(1.5px 1.5px at 100px 150px, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1.5px 1.5px at 300px 80px, rgba(255,255,255,0.70), transparent),
+    radial-gradient(1.5px 1.5px at 200px 250px, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.5px 1.5px at 450px 180px, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1.5px 1.5px at 50px 320px, rgba(255,255,255,0.60), transparent),
+    radial-gradient(1.5px 1.5px at 380px 340px, rgba(255,255,255,0.70), transparent);
   background-size: 550px 400px;
   animation-delay: -3s;
   animation-duration: 12s;
@@ -179,9 +179,9 @@ onMounted(async () => {
 
 .stars--large {
   background-image:
-    radial-gradient(2px 2px at 150px 200px, rgba(255,255,255,0.5), transparent),
-    radial-gradient(2px 2px at 400px 100px, rgba(255,255,255,0.45), transparent),
-    radial-gradient(2px 2px at 250px 350px, rgba(255,255,255,0.4), transparent);
+    radial-gradient(2px 2px at 150px 200px, rgba(255,255,255,0.9), transparent),
+    radial-gradient(2px 2px at 400px 100px, rgba(255,255,255,0.85), transparent),
+    radial-gradient(2px 2px at 250px 350px, rgba(255,255,255,0.8), transparent);
   background-size: 600px 450px;
   animation-delay: -5s;
   animation-duration: 16s;

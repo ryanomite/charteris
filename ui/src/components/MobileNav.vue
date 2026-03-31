@@ -27,9 +27,8 @@ const sections = computed(() => store.sortedSections);
 <style scoped>
 .section-nav {
   position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: var(--gap-main);
+  right: var(--gap-main);
   display: flex;
   gap: 4px;
   background: rgba(30, 30, 30, 0.9);
@@ -62,7 +61,8 @@ const sections = computed(() => store.sortedSections);
 
 @media (max-width: 768px) {
   .section-nav {
-    bottom: 12px;
+    top: var(--gap-main);
+    right: var(--gap-main);
   }
 }
 </style>

@@ -249,7 +249,12 @@ async function onListDropSelf(e: DragEvent) {
         @keydown.escape="cancelRename"
         @blur="submitRename"
       />
-      <span v-else class="list__title">{{ list.name }}</span>
+      <span
+        v-else
+        class="list__title"
+        :class="{ 'list__title--editable': !list.isFixed }"
+        @click.stop="!list.isFixed && startRename()"
+      >{{ list.name }}</span>
       <div class="list__menu-wrap" @keydown.escape="closeMenu">
         <button
           class="list__menu"
@@ -323,6 +328,7 @@ async function onListDropSelf(e: DragEvent) {
   background: var(--bg-list);
   border-radius: var(--radius-list);
   overflow: visible;
+  box-shadow: 0 4px 13px #0006, 0 0 40px #0003;
 }
 
 .list__header {
@@ -331,6 +337,9 @@ async function onListDropSelf(e: DragEvent) {
   justify-content: space-between;
   padding: 10px 12px;
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .list__title {
@@ -338,6 +347,10 @@ async function onListDropSelf(e: DragEvent) {
   font-size: 0.875rem;
   flex: 1;
   min-width: 0;
+}
+
+.list__title--editable {
+  cursor: text;
 }
 
 .list__rename-input {
@@ -482,19 +495,11 @@ async function onListDropSelf(e: DragEvent) {
 }
 
 .list--list-drop-before {
-  border-left: 3px solid var(--accent, #457B9D);
+  box-shadow: -4px 0 0 0 var(--accent, #457B9D), 0 4px 13px #0006, 0 0 40px #0003;
 }
 
 .list--list-drop-after {
-  border-right: 3px solid var(--accent, #457B9D);
-}
-
-.list__header {
-  cursor: grab;
-}
-
-.list__header:active {
-  cursor: grabbing;
+  box-shadow: 4px 0 0 0 var(--accent, #457B9D), 0 4px 13px #0006, 0 0 40px #0003;
 }
 
 .drop-indicator {

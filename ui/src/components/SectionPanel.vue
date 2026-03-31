@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import { useSelection } from '../composables/useSelection';
 import VerticalList from './VerticalList.vue';
 import api from '../services/api';
 import type { ISection, ICard } from '../types';
@@ -8,6 +9,7 @@ import type { ISection, ICard } from '../types';
 const props = defineProps<{ section: ISection }>();
 const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
 const store = useTaskStore();
+const { clearSelection } = useSelection();
 
 const sectionLists = computed(() => store.listsForSection(props.section._id));
 const menuOpen = ref(false);
@@ -112,7 +114,7 @@ async function moveAllToList(fromName: string, toName: string) {
         <div v-if="menuOpen" class="dropdown__backdrop" @click="closeMenu"></div>
       </div>
     </div>
-    <div class="section__body">
+    <div class="section__body" @click.self="clearSelection">
       <VerticalList
         v-for="list in sectionLists"
         :key="list._id"
