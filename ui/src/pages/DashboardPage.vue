@@ -90,7 +90,7 @@ onMounted(async () => {
 .app-header__logo {
   height: 56px;
   opacity: 0.85;
-  filter: drop-shadow(0 0 8px rgba(0, 220, 220, 0.55));
+  filter: drop-shadow(0 0 6px rgba(0, 230, 230, 0.95)) drop-shadow(0 0 18px rgba(0, 210, 220, 0.8)) drop-shadow(0 0 40px rgba(0, 180, 210, 0.6));
 }
 
 .dashboard {

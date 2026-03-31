@@ -111,7 +111,9 @@ if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir, { index: false }));
 
   // SPA fallback — any unmatched GET returns index.html with injected config
+  // No-store prevents the browser caching the HTML and skipping token injection on soft refresh
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.type('html').send(injectedHtml);
   });
 }

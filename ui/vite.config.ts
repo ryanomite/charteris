@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import { VitePWA } from 'vite-plugin-pwa';
 import type { Plugin } from 'vite';
 
 function basicAuthPlugin(): Plugin {
@@ -34,6 +35,17 @@ export default defineConfig({
   plugins: [
     basicAuthPlugin(),
     vue(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Charteris',
+        short_name: 'Charteris',
+        theme_color: '#0f0f1a',
+        background_color: '#0f0f1a',
+        display: 'standalone',
+        icons: [],
+      },
+    }),
   ],
   server: {
     host: '0.0.0.0',

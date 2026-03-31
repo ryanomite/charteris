@@ -262,7 +262,7 @@ async function archiveList() {
   flex-direction: column;
   background: var(--bg-list);
   border-radius: var(--radius-list);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .list__header {
