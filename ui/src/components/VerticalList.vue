@@ -236,7 +236,7 @@ async function onListDropSelf(e: DragEvent) {
   >
     <div
       class="list__header"
-      :draggable="!dragCard.value && !list.isFixed"
+      :draggable="!dragCard && !list.isFixed"
       @dragstart="onListHeaderDragStart"
       @dragend="onListHeaderDragEnd"
     >
