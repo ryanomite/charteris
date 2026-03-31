@@ -49,24 +49,12 @@ Dockerfile         → Single-container build (2-stage)
 
 ---
 
-## Planning Workflow
+## Development Workflow
 
-- Review functional/feature requirements carefully (usually in `planning/`), and ask any clarifying questions in chat before proceeding with development.
-- Create a comprehensive `PLAN.md` file to track all steps (as a checklist) from planning to release.
-    - Each step should be designed for an AI agent to complete. If a chat session is lost, the agent should be able to use the application documentation and `PLAN.md` to pick up where development stopped.
-    - After each step is complete and verified, mark it as complete in `PLAN.md`.
-    - Develop the API first — before the UI or any consumers.
-    - Steps can be organized into phases (architectural or feature-based).
-    - Development will proceed in one shot without stopping (except for major issues or questions), so do not assign timelines to phases.
-- After planning, review the functional requirements and `PLAN.md` for outstanding questions or feature gaps. Stop and ask iterative questions via chat (in small numbered batches), and update both requirements and `PLAN.md` accordingly.
-
-## Pre-Application Work
-
-- **Data schema:** Design complete SQLite schemas. Initialization is handled by `server/src/db/index.ts`.
-- **API utility endpoints:** Create RESTful utility endpoints to drop tables, recreate schemas, and reload seed data.
-- **API design:** Design the RESTful API to handle ALL data operations, and document in `openapi.yaml`.
-- **API build & verify:** Build all RESTful APIs from the OpenAPI spec. After each is built, confirm operations work through cURL calls.
-- **README.md:** Update `README.md` iteratively as development progresses.
+Features and fixes are requested one at a time. There is no PLAN.md. When given a request:
+1. Ask any essential clarifying questions before starting (keep it brief — only blockers).
+2. Implement the change. For features touching both server and UI, build the API first.
+3. Commit and push when done (see Commits below).
 
 ## Docker Development
 
@@ -78,17 +66,21 @@ Dockerfile         → Single-container build (2-stage)
 ## Development Process
 
 ### Versioning
-- Each step in `PLAN.md` corresponds to a semantic version: `0.<phase>.<step>`.
-    - Example: first step of phase 1 → `0.1.1`; second step of phase 3 → `0.3.2`.
-    - Major version stays `0` until first production release after the initial `PLAN.md` is completed.
+- Determine the current version by running `git describe --tags --abbrev=0` (or inspect recent commit messages if no tags exist).
+- Increment the **patch** number (`x.x.PATCH`) for bug fixes and small tweaks.
+- Increment the **minor** number (`x.MINOR.0`) for new features or meaningful additions.
+- **Never** increment the **major** version unless the user explicitly says to.
 
 ### Commits
-- Commit after each major step (e.g., after API development, after UI development).
-- Prefix commit messages with the version number.
-- Multiple commits may share a version number if interactive bugs or additional requests must be resolved within a step.
+- **Commit and push after every change** — GitHub webhooks trigger a CapRover deploy on push, so nothing is testable until committed.
+- Commit freely without asking for confirmation. Do not use `--force` or amend published commits.
+- Always prefix the commit message with the version number, e.g.: `1.0.3 Fix label color not saving`
+- Use a single foreground terminal for all git operations (not background). Run `git add -A && git commit -m "..." && git push` as one command.
 
-### Build Order
-- Build and test ALL APIs before proceeding to UI/application development.
+### Terminal Usage
+- Prefer a single, persistent foreground terminal session over background terminals.
+- Chain related commands with `&&` in one `run_in_terminal` call rather than opening multiple terminals.
+- Only use background terminals for long-running processes that must stay alive (e.g., a dev server).
 
 ### API ↔ Frontend Data Formatting
 - API responses consumed by the Vue.js frontend must return JS-native types:
@@ -104,7 +96,6 @@ Dockerfile         → Single-container build (2-stage)
 - Use CSS variables defined in `planning/UX.md` for all styling
 - RESTful API endpoints should follow `/api/v1/<resource>` convention
 - All API endpoints must have corresponding Swagger documentation
-- Write tests alongside features
 
 ### Server Patterns
 - **Query layer:** All SQL goes in `server/src/queries/*.ts`, never in route handlers. Functions follow `findAll[Resource]()`, `find[Resource]ById()`, `insert[Resource]()`, `update[Resource]()`, `delete[Resource]()` naming.
