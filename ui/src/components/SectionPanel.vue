@@ -239,7 +239,6 @@ async function moveAllToList(fromName: string, toName: string) {
 .section--planning .section__body {
   overflow-x: hidden;
 }
-</style>
 
 /* Mobile */
 @media (max-width: 768px) {
