@@ -52,5 +52,4 @@ coverage/
 # Logs
 logs/
 *.log
-*.json
 *.stackdump
