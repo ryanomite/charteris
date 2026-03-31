@@ -235,7 +235,7 @@ async function moveAllToList(fromName: string, toName: string) {
   overflow-x: hidden;
 }
 
-/* Planning: exactly 2 lists, no horizontal scroll */
+/* Planning: exactly 2 lists, no horizontal scroll on desktop */
 .section--planning .section__body {
   overflow-x: hidden;
 }
@@ -247,6 +247,11 @@ async function moveAllToList(fromName: string, toName: string) {
   .section--board {
     width: 100%;
     min-width: 100%;
+  }
+
+  /* Planning scrolls horizontally on mobile just like Board */
+  .section--planning .section__body {
+    overflow-x: auto;
   }
 }
 </style>
