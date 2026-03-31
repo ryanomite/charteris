@@ -1,0 +1,1014 @@
+openapi: "3.0.3"
+info:
+  title: Charteris API
+  description: RESTful API for the Charteris personal task management tool.
+  version: "0.2.0"
+servers:
+  - url: /api/v1
+    description: API v1
+
+components:
+  parameters:
+    token:
+      name: token
+      in: query
+      required: true
+      schema:
+        type: string
+      description: API authentication token
+  schemas:
+    Section:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+          enum: [inbox, planning, board]
+        icon:
+          type: string
+        order:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    List:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        sectionId:
+          type: string
+        order:
+          type: integer
+        isFixed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Subtask:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        completed:
+          type: boolean
+
+    Task:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 4
+          description: "1=high(red), 2=medium(orange), 3=low(yellow), 4=info(blue)"
+        labels:
+          type: array
+          items:
+            type: string
+        dueDate:
+          type: string
+          format: date
+          nullable: true
+        recurrence:
+          type: string
+          description: "Comma-separated days, e.g. 'mon,wed,fri'"
+        completed:
+          type: boolean
+        archived:
+          type: boolean
+        master:
+          type: boolean
+        parentId:
+          type: string
+          nullable: true
+        subtasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subtask"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Card:
+      type: object
+      properties:
+        _id:
+          type: string
+        taskId:
+          type: string
+        listId:
+          type: string
+        order:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Label:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  # --- Sections ---
+  /sections:
+    get:
+      summary: List all sections
+      tags: [Sections]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Array of sections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Section"
+
+  /sections/{id}:
+    get:
+      summary: Get a section by ID
+      tags: [Sections]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Section object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Section"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Lists ---
+  /lists:
+    get:
+      summary: List all lists
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: sectionId
+          in: query
+          schema:
+            type: string
+          description: Filter by section ID
+      responses:
+        "200":
+          description: Array of lists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/List"
+    post:
+      summary: Create a new list (Board section only)
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, sectionId]
+              properties:
+                name:
+                  type: string
+                sectionId:
+                  type: string
+      responses:
+        "201":
+          description: Created list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /lists/{id}:
+    get:
+      summary: Get a list by ID
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a list (Board lists only; fixed lists cannot be renamed)
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Updated list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        "400":
+          description: Cannot modify fixed list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a list (Board lists only; fixed lists cannot be deleted)
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "400":
+          description: Cannot delete fixed list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /lists/{id}/reorder:
+    patch:
+      summary: Reorder a list within its section
+      tags: [Lists]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order:
+                  type: integer
+      responses:
+        "200":
+          description: Updated list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+
+  # --- Tasks ---
+  /tasks:
+    get:
+      summary: List tasks with optional filters
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: completed
+          in: query
+          schema:
+            type: boolean
+        - name: archived
+          in: query
+          schema:
+            type: boolean
+        - name: label
+          in: query
+          schema:
+            type: string
+          description: Label ID
+        - name: dueDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: master
+          in: query
+          schema:
+            type: boolean
+        - name: parentId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Array of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      summary: Create a new task
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
+                labels:
+                  type: array
+                  items:
+                    type: string
+                dueDate:
+                  type: string
+                  format: date
+                  nullable: true
+                recurrence:
+                  type: string
+                completed:
+                  type: boolean
+                archived:
+                  type: boolean
+                master:
+                  type: boolean
+                parentId:
+                  type: string
+                  nullable: true
+                subtasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      completed:
+                        type: boolean
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}:
+    get:
+      summary: Get a task by ID
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Task object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a task (propagates to parent/siblings except completed/archived)
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                priority:
+                  type: integer
+                labels:
+                  type: array
+                  items:
+                    type: string
+                dueDate:
+                  type: string
+                  format: date
+                  nullable: true
+                recurrence:
+                  type: string
+                completed:
+                  type: boolean
+                archived:
+                  type: boolean
+                subtasks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      completed:
+                        type: boolean
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      summary: Delete a task and all its cards
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /tasks/{id}/complete:
+    patch:
+      summary: Toggle task completion
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}/archive:
+    patch:
+      summary: Archive a task
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}/series:
+    delete:
+      summary: Delete all tasks in a recurring series (same parentId)
+      tags: [Tasks]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deletedCount:
+                    type: integer
+
+  # --- Cards ---
+  /cards:
+    get:
+      summary: List cards with optional filters
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: listId
+          in: query
+          schema:
+            type: string
+        - name: taskId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Array of cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Card"
+    post:
+      summary: Create a new card
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId, listId]
+              properties:
+                taskId:
+                  type: string
+                listId:
+                  type: string
+      responses:
+        "201":
+          description: Created card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/{id}:
+    get:
+      summary: Get a card by ID
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Card object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update a card
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listId:
+                  type: string
+                order:
+                  type: integer
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+    delete:
+      summary: Delete a card
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /cards/{id}/reorder:
+    patch:
+      summary: Reorder a card within its list
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order:
+                  type: integer
+      responses:
+        "200":
+          description: Updated card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  /cards/{id}/move:
+    patch:
+      summary: Move a card between lists (handles same-section vs cross-section logic)
+      tags: [Cards]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetListId]
+              properties:
+                targetListId:
+                  type: string
+                order:
+                  type: integer
+                  description: Position in the target list (default appends)
+      responses:
+        "200":
+          description: Moved card (or new card if cross-section duplicate)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+
+  # --- Labels ---
+  /labels:
+    get:
+      summary: List labels (with optional search)
+      tags: [Labels]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search/autocomplete term
+      responses:
+        "200":
+          description: Array of labels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Label"
+    post:
+      summary: Create a new label
+      tags: [Labels]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Created label
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+
+  /labels/{id}:
+    get:
+      summary: Get a label by ID
+      tags: [Labels]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Label object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+    put:
+      summary: Update a label
+      tags: [Labels]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Updated label
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+    delete:
+      summary: Delete a label
+      tags: [Labels]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # --- Dashboard ---
+  /dashboard:
+    get:
+      summary: Get full UI state (sections, lists, cards, tasks) in display order
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Full dashboard state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    name:
+                      type: string
+                    slug:
+                      type: string
+                    icon:
+                      type: string
+                    order:
+                      type: integer
+                    lists:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                          name:
+                            type: string
+                          order:
+                            type: integer
+                          isFixed:
+                            type: boolean
+                          cards:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                _id:
+                                  type: string
+                                order:
+                                  type: integer
+                                task:
+                                  $ref: "#/components/schemas/Task"
+
+  # --- Admin ---
+  /admin/drop:
+    post:
+      summary: Drop all collections
+      tags: [Admin]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Collections dropped
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /admin/seed:
+    post:
+      summary: Reload seed data
+      tags: [Admin]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Seed data loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /admin/reset:
+    post:
+      summary: Drop all collections and reload seed data
+      tags: [Admin]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Reset complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string

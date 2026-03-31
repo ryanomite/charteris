@@ -1,0 +1,105 @@
+/* Charteris — Global Styles & CSS Variables */
+
+:root {
+  /* Backgrounds */
+  --bg-app: #000000;
+  --bg-section-inbox: #3f0748;
+  --bg-section-planning: #2a0748;
+  --bg-section-board: #072e48;
+  --bg-card: #303030;
+  --bg-card-hover: #3a3a3a;
+  --bg-list: rgba(0, 0, 0, 0.25);
+
+  /* Priority Top Border Colors */
+  --priority-1: #D90429;  /* Critical — Red */
+  --priority-2: #F77F00;  /* High — Orange */
+  --priority-3: #FCBF49;  /* Medium — Yellow */
+  --priority-4: #457B9D;  /* Low — Blue */
+
+  /* Typography & Icons */
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --icon-ui: #888888;
+
+  /* Spacing & Radius */
+  --radius-section: 12px;
+  --radius-card: 8px;
+  --radius-list: 8px;
+  --gap-main: 16px;
+  --gap-list: 12px;
+  --pad-card: 12px;
+
+  /* Accent */
+  --accent: #457B9D;
+
+  /* Transitions */
+  --transition-default: 200ms ease-in-out;
+}
+
+/* Reset & base */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(180deg, #000000 0%, #0a1a2e 40%, #0d2a3a 100%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 768px) {
+  html, body {
+    overflow: auto;
+    overflow-x: hidden;
+  }
+}
+
+#app {
+  height: 100%;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--icon-ui);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Scrollbar for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--icon-ui) transparent;
+}
+
+/* Button reset */
+button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* Anchor reset */
+a {
+  color: inherit;
+  text-decoration: none;
+}

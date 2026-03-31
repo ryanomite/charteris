@@ -1,0 +1,153 @@
+import Database from 'better-sqlite3';
+import { config } from '../config';
+import path from 'path';
+import fs from 'fs';
+
+let db: Database.Database;
+
+export function getDb(): Database.Database {
+  if (!db) {
+    throw new Error('Database not initialized — call initDb() first');
+  }
+  return db;
+}
+
+export function initDb(): Database.Database {
+  // Ensure directory exists
+  const dir = path.dirname(config.dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  db = new Database(config.dbPath);
+
+  // Performance settings
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
+
+  createTables();
+  seedIfEmpty();
+
+  return db;
+}
+
+function createTables(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sections (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      icon TEXT NOT NULL,
+      "order" INTEGER NOT NULL,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS lists (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      sectionId TEXT NOT NULL REFERENCES sections(id),
+      "order" INTEGER NOT NULL DEFAULT 0,
+      isFixed INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_lists_section_order ON lists(sectionId, "order");
+
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      priority INTEGER CHECK(priority IS NULL OR (priority >= 1 AND priority <= 4)),
+      dueDate TEXT,
+      recurrence TEXT NOT NULL DEFAULT '',
+      completed INTEGER NOT NULL DEFAULT 0,
+      archived INTEGER NOT NULL DEFAULT 0,
+      master INTEGER NOT NULL DEFAULT 0,
+      parentId TEXT REFERENCES tasks(id),
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived);
+    CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
+    CREATE INDEX IF NOT EXISTS idx_tasks_parentId ON tasks(parentId);
+    CREATE INDEX IF NOT EXISTS idx_tasks_master ON tasks(master, recurrence, archived);
+    CREATE INDEX IF NOT EXISTS idx_tasks_dueDate ON tasks(dueDate);
+
+    CREATE TABLE IF NOT EXISTS subtasks (
+      id TEXT PRIMARY KEY,
+      taskId TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0,
+      "order" INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_subtasks_taskId ON subtasks(taskId);
+
+    CREATE TABLE IF NOT EXISTS labels (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS task_labels (
+      taskId TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      labelId TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+      PRIMARY KEY (taskId, labelId)
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_labels_taskId ON task_labels(taskId);
+    CREATE INDEX IF NOT EXISTS idx_task_labels_labelId ON task_labels(labelId);
+
+    CREATE TABLE IF NOT EXISTS cards (
+      id TEXT PRIMARY KEY,
+      taskId TEXT NOT NULL REFERENCES tasks(id),
+      listId TEXT NOT NULL REFERENCES lists(id),
+      "order" INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_cards_list_order ON cards(listId, "order");
+    CREATE INDEX IF NOT EXISTS idx_cards_taskId ON cards(taskId);
+  `);
+}
+
+function seedIfEmpty(): void {
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM sections').get() as { cnt: number };
+  if (count.cnt > 0) return;
+
+  const insertSection = db.prepare(
+    'INSERT INTO sections (id, name, slug, icon, "order") VALUES (?, ?, ?, ?, ?)'
+  );
+  const insertList = db.prepare(
+    'INSERT INTO lists (id, name, sectionId, "order", isFixed) VALUES (?, ?, ?, ?, ?)'
+  );
+
+  const txn = db.transaction(() => {
+    const inboxId = generateId();
+    const planningId = generateId();
+    const boardId = generateId();
+
+    insertSection.run(inboxId, 'Inbox', 'inbox', 'fa-inbox', 0);
+    insertSection.run(planningId, 'Planning', 'planning', 'fa-calendar-alt', 1);
+    insertSection.run(boardId, 'Board', 'board', 'fa-columns', 2);
+
+    insertList.run(generateId(), 'Draft', inboxId, 0, 1);
+    insertList.run(generateId(), 'Today', planningId, 0, 1);
+    insertList.run(generateId(), 'Next', planningId, 1, 1);
+  });
+
+  txn();
+  console.log('Seeded sections and fixed lists');
+}
+
+export function generateId(): string {
+  // Generate a 24-char hex string
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function now(): string {
+  return new Date().toISOString();
+}
