@@ -11,6 +11,8 @@ export type WSEventType =
 
 let wss: WebSocketServer;
 
+const PING_INTERVAL_MS = 30_000;
+
 export function setupWebSocket(server: HTTPServer): WebSocketServer {
   wss = new WebSocketServer({ noServer: true });
 
@@ -33,7 +35,27 @@ export function setupWebSocket(server: HTTPServer): WebSocketServer {
     }
   });
 
+  // Heartbeat: ping every 30s to keep nginx proxy from closing idle connections.
+  // Clients that don't respond (isAlive still false) are terminated.
+  const pingInterval = setInterval(() => {
+    for (const client of wss.clients) {
+      const c = client as WebSocket & { isAlive?: boolean };
+      if (c.isAlive === false) {
+        c.terminate();
+        continue;
+      }
+      c.isAlive = false;
+      c.ping();
+    }
+  }, PING_INTERVAL_MS);
+
+  wss.on('close', () => clearInterval(pingInterval));
+
   wss.on('connection', (ws) => {
+    const c = ws as WebSocket & { isAlive?: boolean };
+    c.isAlive = true;
+    c.on('pong', () => { c.isAlive = true; });
+
     console.log(`WebSocket client connected (total: ${wss.clients.size})`);
 
     ws.on('close', () => {
