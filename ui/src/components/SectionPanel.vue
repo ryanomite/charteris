@@ -62,7 +62,7 @@ async function moveAllToList(fromName: string, toName: string) {
       })
     ));
   }
-  await store.fetchDashboard();
+  await store.refreshListCards([fromList._id, toList._id]);
 }
 </script>
 

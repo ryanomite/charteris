@@ -118,6 +118,15 @@ function runMigrations(): void {
   if (!cols.includes('archived')) {
     db.exec('ALTER TABLE lists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
   }
+  // Rename sections: Planning → Briefing, Board → Cabinet
+  const planningRow = db.prepare("SELECT name FROM sections WHERE slug = 'planning'").get() as any;
+  if (planningRow && planningRow.name === 'Planning') {
+    db.exec("UPDATE sections SET name = 'Briefing' WHERE slug = 'planning'");
+  }
+  const boardRow = db.prepare("SELECT name FROM sections WHERE slug = 'board'").get() as any;
+  if (boardRow && boardRow.name === 'Board') {
+    db.exec("UPDATE sections SET name = 'Cabinet' WHERE slug = 'board'");
+  }
 }
 
 function seedIfEmpty(): void {
@@ -137,8 +146,8 @@ function seedIfEmpty(): void {
     const boardId = generateId();
 
     insertSection.run(inboxId, 'Inbox', 'inbox', 'fa-inbox', 0);
-    insertSection.run(planningId, 'Planning', 'planning', 'fa-calendar-alt', 1);
-    insertSection.run(boardId, 'Board', 'board', 'fa-columns', 2);
+    insertSection.run(planningId, 'Briefing', 'planning', 'fa-calendar-alt', 1);
+    insertSection.run(boardId, 'Cabinet', 'board', 'fa-columns', 2);
 
     insertList.run(generateId(), 'Draft', inboxId, 0, 1);
     insertList.run(generateId(), 'Today', planningId, 0, 1);

@@ -122,6 +122,28 @@ export const useTaskStore = defineStore('tasks', () => {
     labels.value = labels.value.filter(l => l._id !== labelId);
   }
 
+  // Targeted refresh: fetch cards for specific lists only (avoids full dashboard reload)
+  async function refreshListCards(listIds: string[]) {
+    const results = await Promise.all(
+      listIds.map(listId => api.get('/cards', { params: { listId } }))
+    );
+    const updatedCards = results.flatMap(r => r.data as ICard[]);
+    const updatedSet = new Set(listIds);
+    cards.value = [
+      ...cards.value.filter(c => !updatedSet.has(c.listId)),
+      ...updatedCards,
+    ];
+  }
+
+  // Targeted refresh: fetch lists for a single section only
+  async function refreshSectionLists(sectionId: string) {
+    const { data } = await api.get('/lists', { params: { sectionId } });
+    lists.value = [
+      ...lists.value.filter(l => l.sectionId !== sectionId),
+      ...(data as IList[]),
+    ];
+  }
+
   return {
     sections, lists, tasks, cards, labels, loading,
     sortedSections, fetchDashboard,
@@ -130,5 +152,6 @@ export const useTaskStore = defineStore('tasks', () => {
     upsertCard, removeCard,
     upsertList, removeList,
     upsertLabel, removeLabel,
+    refreshListCards, refreshSectionLists,
   };
 });

@@ -290,6 +290,7 @@ async function onListDropSelf(e: DragEvent) {
     </div>
     <div
       class="list__cards"
+      :data-list-id="list._id"
       @dragover="onDragOver"
       @dragleave="onDragLeave"
       @drop="handleDrop"

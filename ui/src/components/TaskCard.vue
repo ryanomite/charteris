@@ -9,7 +9,7 @@ import type { ICard } from '../types';
 const props = defineProps<{ card: ICard }>();
 const emit = defineEmits<{ (e: 'open', card: ICard): void }>();
 const store = useTaskStore();
-const { onDragStart, onDragEnd } = useDragDrop();
+const { onDragStart, onDragEnd, onCardTouchStart } = useDragDrop();
 const { isSelected, isFocused, selectCard } = useSelection();
 
 const task = computed(() => store.taskById(props.card.taskId));
@@ -90,6 +90,7 @@ async function toggleComplete(e: MouseEvent) {
     draggable="true"
     @dragstart="onDragStart(card, $event)"
     @dragend="onDragEnd"
+    @touchstart.passive="onCardTouchStart(card, $event)"
     @click="onClick"
   >
     <div class="card__hover-left">
