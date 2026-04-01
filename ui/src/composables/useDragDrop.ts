@@ -108,62 +108,44 @@ export function useDragDrop() {
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
 
-    // Cancel any in-progress timer
     if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
     touchEarlyCleanup?.();
 
     const el = e.currentTarget as HTMLElement;
-
-    // If touch moves >8px before the timer fires, cancel (it's a scroll)
-    const earlyMove = (ev: TouchEvent) => {
-      const t = ev.touches[0];
-      if (Math.abs(t.clientX - touchStartX) > 8 || Math.abs(t.clientY - touchStartY) > 8) {
-        if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
-        earlyCleanup();
-      }
-    };
-    const earlyCleanup = () => {
-      document.removeEventListener('touchmove', earlyMove);
-      document.removeEventListener('touchend', earlyCleanup);
-      document.removeEventListener('touchcancel', earlyCleanup);
-      touchEarlyCleanup = null;
-    };
-    document.addEventListener('touchmove', earlyMove, { passive: true });
-    document.addEventListener('touchend', earlyCleanup, { once: true });
-    document.addEventListener('touchcancel', earlyCleanup, { once: true });
-    touchEarlyCleanup = earlyCleanup;
-
-    touchTimer = setTimeout(() => {
-      earlyCleanup();
-      dragCard.value = card;
-      dragSourceListId.value = card.listId;
-      if ('vibrate' in navigator) (navigator as any).vibrate(30);
-      activateTouchDrag(card, el);
-    }, 250);
-  }
-
-  function activateTouchDrag(card: ICard, el: HTMLElement) {
+    let dragging = false;
     let touchTargetListId: string | null = null;
     let touchDropIdx = -1;
 
+    // Register as non-passive from the START so the browser never commits to scroll
+    // mode before we have a chance to call preventDefault() once drag activates.
     const moveHandler = (ev: TouchEvent) => {
-      ev.preventDefault();
       const t = ev.touches[0];
+      const dx = Math.abs(t.clientX - touchStartX);
+      const dy = Math.abs(t.clientY - touchStartY);
 
-      // Temporarily disable pointer-events on dragged card so elementFromPoint sees under it
+      if (!dragging) {
+        // Still in wait period — cancel if finger moved too much (it's a scroll)
+        if (dx > 8 || dy > 8) {
+          cleanup();
+        }
+        return; // Don't preventDefault — allow natural scroll until drag activates
+      }
+
+      // Drag is active: prevent scroll and find drop target
+      ev.preventDefault();
+
       el.style.pointerEvents = 'none';
       const target = document.elementFromPoint(t.clientX, t.clientY);
       el.style.pointerEvents = '';
 
-      // Walk up DOM to find the list cards container (has data-list-id attribute)
       let listEl: Element | null = target;
       while (listEl && !listEl.getAttribute('data-list-id')) {
-        listEl = listEl.parentElement;
+        listEl = listEl.parentElement ?? null;
       }
       touchTargetListId = listEl?.getAttribute('data-list-id') ?? null;
 
       if (listEl) {
-        const cardEls = Array.from(listEl.querySelectorAll('.card'));
+        const cardEls = Array.from(listEl.querySelectorAll('[data-card-id]'));
         let idx = cardEls.length;
         for (let i = 0; i < cardEls.length; i++) {
           const rect = cardEls[i].getBoundingClientRect();
@@ -174,21 +156,38 @@ export function useDragDrop() {
     };
 
     const endHandler = async () => {
-      document.removeEventListener('touchmove', moveHandler, { capture: true } as EventListenerOptions);
-      document.removeEventListener('touchend', endHandler);
-      document.removeEventListener('touchcancel', endHandler);
-
-      if (touchTargetListId) {
-        await onDrop(touchTargetListId, touchDropIdx >= 0 ? touchDropIdx : -1);
-      } else {
-        dragCard.value = null;
-        dragSourceListId.value = null;
+      cleanup();
+      if (dragging) {
+        if (touchTargetListId) {
+          await onDrop(touchTargetListId, touchDropIdx >= 0 ? touchDropIdx : -1);
+        } else {
+          dragCard.value = null;
+          dragSourceListId.value = null;
+        }
       }
     };
 
-    document.addEventListener('touchmove', moveHandler, { passive: false, capture: true } as AddEventListenerOptions);
+    const cleanup = () => {
+      if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+      document.removeEventListener('touchmove', moveHandler);
+      document.removeEventListener('touchend', endHandler);
+      document.removeEventListener('touchcancel', endHandler);
+      touchEarlyCleanup = null;
+    };
+
+    touchEarlyCleanup = cleanup;
+
+    // Non-passive from the start — browser won't lock in scroll mode before drag fires
+    document.addEventListener('touchmove', moveHandler, { passive: false });
     document.addEventListener('touchend', endHandler, { once: true });
     document.addEventListener('touchcancel', endHandler, { once: true });
+
+    touchTimer = setTimeout(() => {
+      dragging = true;
+      dragCard.value = card;
+      dragSourceListId.value = card.listId;
+      if ('vibrate' in navigator) (navigator as any).vibrate(30);
+    }, 250);
   }
 
   return {

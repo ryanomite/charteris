@@ -297,7 +297,9 @@ async function onListDropSelf(e: DragEvent) {
     >
       <template v-for="(card, i) in cards" :key="card._id">
         <div v-if="isSameListDrag && dropIndex === i && dragCard?._id !== card._id" class="drop-indicator"></div>
-        <TaskCard :card="card" @open="(c: ICard) => emit('openCard', c)" />
+        <div :data-card-id="card._id">
+          <TaskCard :card="card" @open="(c: ICard) => emit('openCard', c)" />
+        </div>
       </template>
       <div v-if="isSameListDrag && dropIndex === cards.length" class="drop-indicator"></div>
     </div>

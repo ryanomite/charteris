@@ -90,7 +90,7 @@ async function toggleComplete(e: MouseEvent) {
     draggable="true"
     @dragstart="onDragStart(card, $event)"
     @dragend="onDragEnd"
-    @touchstart.passive="onCardTouchStart(card, $event)"
+    @touchstart="onCardTouchStart(card, $event)"
     @click="onClick"
   >
     <div class="card__hover-left">
