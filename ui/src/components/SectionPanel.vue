@@ -303,10 +303,6 @@ async function cast() {
   opacity: 0.85;
 }
 
-
-  overflow-x: hidden;
-}
-
 /* Planning: exactly 2 lists, no horizontal scroll on desktop */
 .section--planning .section__body {
   overflow-x: hidden;
