@@ -13,8 +13,11 @@ const { onDragStart, onDragEnd, onCardTouchStart } = useDragDrop();
 const { isSelected, isFocused, selectCard } = useSelection();
 
 const task = computed(() => store.taskById(props.card.taskId));
+const isComplete = computed(() => task.value?.completed === true);
+const isDragging = computed(() => dragCard.value?._id === props.card._id);
 
 const priorityColor = computed(() => {
+  if (isComplete.value) return 'transparent';
   const p = task.value?.priority;
   if (p == null) return 'transparent';
   const map: Record<number, string> = {
@@ -25,9 +28,6 @@ const priorityColor = computed(() => {
   };
   return map[p] || 'transparent';
 });
-
-const isComplete = computed(() => task.value?.completed === true);
-const isDragging = computed(() => dragCard.value?._id === props.card._id);
 
 const dueStatus = computed(() => {
   const d = task.value?.dueDate;
