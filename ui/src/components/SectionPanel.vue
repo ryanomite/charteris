@@ -64,6 +64,24 @@ async function moveAllToList(fromName: string, toName: string) {
   }
   await store.refreshListCards([fromList._id, toList._id]);
 }
+
+async function adjourn() {
+  try {
+    const { data } = await api.post('/sections/planning/adjourn');
+    await store.refreshListCards(data.listIds);
+  } catch (err) {
+    console.error('Adjourn failed:', err);
+  }
+}
+
+async function cast() {
+  try {
+    const { data } = await api.post('/sections/board/cast');
+    await store.refreshListCards([data.listId]);
+  } catch (err) {
+    console.error('Cast failed:', err);
+  }
+}
 </script>
 
 <template>
@@ -72,6 +90,28 @@ async function moveAllToList(fromName: string, toName: string) {
       <div class="section__title">
         <i :class="['fas', section.icon]"></i>
         <span>{{ section.name }}</span>
+      </div>
+      <div class="section__actions">
+        <!-- Briefing: Adjourn button -->
+        <button
+          v-if="section.slug === 'planning'"
+          class="section__action-btn"
+          title="Adjourn: clear Today list"
+          @click="adjourn"
+        >
+          <i class="fas fa-times-circle"></i>
+          Adjourn
+        </button>
+        <!-- Cabinet: Cast button -->
+        <button
+          v-if="section.slug === 'board'"
+          class="section__action-btn"
+          title="Cast: pull overdue/priority tasks into Today"
+          @click="cast"
+        >
+          <i class="fas fa-arrow-left"></i>
+          Cast
+        </button>
       </div>
       <div
         v-if="section.slug === 'board' || section.slug === 'planning'"
@@ -233,7 +273,37 @@ async function moveAllToList(fromName: string, toName: string) {
 }
 
 /* Inbox: single list, no horizontal scroll */
-.section--inbox .section__body {
+.section__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.section__action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #fff;
+  color: #000;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: opacity var(--transition-default);
+}
+
+.section__action-btn i {
+  color: #000;
+  font-size: 0.75rem;
+}
+
+.section__action-btn:hover {
+  opacity: 0.85;
+}
+
+
   overflow-x: hidden;
 }
 

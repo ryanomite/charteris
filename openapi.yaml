@@ -196,6 +196,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /sections/planning/adjourn:
+    post:
+      summary: Adjourn the Briefing section
+      description: >
+        Clears the Today list. Cards belonging to tasks that also exist in other lists
+        are removed from Today. Cards belonging to tasks that only exist in Today
+        (orphaned) are moved to the Next list.
+      tags: [Sections]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: IDs of affected lists (Today and Next)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listIds:
+                    type: array
+                    items:
+                      type: string
+        "500":
+          description: Today or Next list not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sections/board/cast:
+    post:
+      summary: Cast eligible tasks into Today
+      description: >
+        Finds all incomplete, unarchived tasks that are overdue, due today, or have
+        priority 1, and adds a card in the Today list for each one not already there.
+      tags: [Sections]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Number of cards added and the Today list ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added:
+                    type: integer
+                  listId:
+                    type: string
+        "500":
+          description: Today list not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Lists ---
   /lists:
     get:

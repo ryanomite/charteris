@@ -10,6 +10,7 @@ export const useTaskStore = defineStore('tasks', () => {
   const cards = ref<ICard[]>([]);
   const labels = ref<ILabel[]>([]);
   const loading = ref(false);
+  const showArchived = ref(false);
 
   // Fetch full dashboard state
   async function fetchDashboard() {
@@ -44,7 +45,9 @@ export const useTaskStore = defineStore('tasks', () => {
       .filter(c => {
         if (c.listId !== listId) return false;
         const task = tasks.value.find(t => t._id === c.taskId);
-        return task && !task.archived;
+        if (!task) return false;
+        if (task.archived && !showArchived.value) return false;
+        return true;
       })
       .sort((a, b) => {
         const taskA = tasks.value.find(t => t._id === a.taskId);
@@ -144,8 +147,19 @@ export const useTaskStore = defineStore('tasks', () => {
     ];
   }
 
+  // Archive all completed tasks globally (batched requests)
+  async function archiveAllCompleted() {
+    const completed = tasks.value.filter(t => t.completed && !t.archived);
+    const BATCH = 5;
+    for (let i = 0; i < completed.length; i += BATCH) {
+      const batch = completed.slice(i, i + BATCH);
+      const results = await Promise.all(batch.map(t => api.patch(`/tasks/${t._id}/archive`)));
+      results.forEach(r => upsertTask(r.data));
+    }
+  }
+
   return {
-    sections, lists, tasks, cards, labels, loading,
+    sections, lists, tasks, cards, labels, loading, showArchived,
     sortedSections, fetchDashboard,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
     upsertTask, removeTask,
@@ -153,5 +167,6 @@ export const useTaskStore = defineStore('tasks', () => {
     upsertList, removeList,
     upsertLabel, removeLabel,
     refreshListCards, refreshSectionLists,
+    archiveAllCompleted,
   };
 });

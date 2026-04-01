@@ -252,6 +252,18 @@ export function propagateToSiblings(task: Task, fields: Record<string, unknown>)
   }
 }
 
+// Find incomplete, unarchived tasks eligible for "Cast" to Today:
+// tasks with priority=1, or due today, or overdue
+export function findTasksForCast(today: string): Task[] {
+  const rows = getDb().prepare(`
+    SELECT * FROM tasks
+    WHERE completed = 0
+      AND archived = 0
+      AND (priority = 1 OR (dueDate IS NOT NULL AND date(dueDate) <= date(?)))
+  `).all(today) as any[];
+  return rows.map(toTask);
+}
+
 export function deleteTask(id: string): void {
   const db = getDb();
   // Cards referencing this task

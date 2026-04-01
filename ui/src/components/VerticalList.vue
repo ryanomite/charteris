@@ -169,7 +169,34 @@ async function archiveAllTasks() {
   }
 }
 
-async function archiveList() {
+async function archiveCompleted() {
+  closeMenu();
+  const completed = cards.value.filter(c => {
+    const task = store.taskById(c.taskId);
+    return task && task.completed && !task.archived;
+  });
+  if (!completed.length) return;
+  const BATCH = 5;
+  for (let i = 0; i < completed.length; i += BATCH) {
+    const batch = completed.slice(i, i + BATCH);
+    await Promise.all(batch.map(async card => {
+      const { data } = await api.patch(`/tasks/${card.taskId}/archive`);
+      store.upsertTask(data);
+    }));
+  }
+}
+
+async function adjournList() {
+  closeMenu();
+  try {
+    const { data } = await api.post('/sections/planning/adjourn');
+    await store.refreshListCards(data.listIds);
+  } catch (err) {
+    console.error('Adjourn failed:', err);
+  }
+}
+
+
   closeMenu();
   if (!confirm(`Archive "${props.list.name}" and all its tasks?`)) return;
   try {
@@ -270,6 +297,18 @@ async function onListDropSelf(e: DragEvent) {
             <button role="menuitem" class="dropdown__item" @click="startRename">
               <i class="fas fa-pencil-alt"></i>
               Edit name
+            </button>
+          </li>
+          <li role="none">
+            <button role="menuitem" class="dropdown__item" @click="archiveCompleted">
+              <i class="fas fa-check-circle"></i>
+              Archive completed tasks
+            </button>
+          </li>
+          <li v-if="list.name === 'Today' && section.slug === 'planning'" role="none">
+            <button role="menuitem" class="dropdown__item" @click="adjournList">
+              <i class="fas fa-times-circle"></i>
+              Adjourn
             </button>
           </li>
           <li role="none">
