@@ -196,7 +196,7 @@ async function adjournList() {
   }
 }
 
-
+async function archiveList() {
   closeMenu();
   if (!confirm(`Archive "${props.list.name}" and all its tasks?`)) return;
   try {
