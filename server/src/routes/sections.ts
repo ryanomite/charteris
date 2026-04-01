@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { findAllSections, findSectionById, findSectionBySlug } from '../queries/sections';
 import { findAllLists } from '../queries/lists';
 import { findAllCards, deleteCard, updateCard, maxCardOrder, insertCard } from '../queries/cards';
-import { findTasksForCast } from '../queries/tasks';
+import { findTaskById, findTasksForCast } from '../queries/tasks';
 import { broadcast } from '../ws';
 
 const router = Router();
@@ -18,8 +18,9 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // POST /sections/planning/adjourn
-// Clears the Today list: tasks that exist in other lists are removed from Today;
-// tasks that only exist in Today (orphaned) are moved to Next.
+// 1. Remove completed/archived cards from both Today and Next.
+// 2. Remove non-orphaned cards from Next (tasks that exist in other lists).
+// 3. Move ALL remaining Today cards to Next (orphaned or not).
 router.post('/planning/adjourn', (_req: Request, res: Response) => {
   const section = findSectionBySlug('planning');
   if (!section) { res.status(404).json({ error: 'Planning section not found' }); return; }
@@ -32,16 +33,33 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     return;
   }
 
-  const todayCards = findAllCards({ listId: todayList._id });
-  for (const card of todayCards) {
+  // Step 1: Remove completed/archived cards from both Today and Next
+  const bothListCards = [
+    ...findAllCards({ listId: todayList._id }),
+    ...findAllCards({ listId: nextList._id }),
+  ];
+  for (const card of bothListCards) {
+    const task = findTaskById(card.taskId);
+    if (task && (task.completed || task.archived)) {
+      deleteCard(card._id);
+    }
+  }
+
+  // Step 2: Remove non-orphaned cards from Next
+  const nextCardsAfterStep1 = findAllCards({ listId: nextList._id });
+  for (const card of nextCardsAfterStep1) {
     const allTaskCards = findAllCards({ taskId: card.taskId });
-    const hasOtherCards = allTaskCards.some(c => c.listId !== todayList._id);
+    const hasOtherCards = allTaskCards.some(c => c.listId !== nextList._id);
     if (hasOtherCards) {
       deleteCard(card._id);
-    } else {
-      const nextOrder = maxCardOrder(nextList._id) + 1;
-      updateCard(card._id, { listId: nextList._id, order: nextOrder });
     }
+  }
+
+  // Step 3: Move all remaining Today cards to Next
+  const todayCardsAfterStep1 = findAllCards({ listId: todayList._id });
+  for (const card of todayCardsAfterStep1) {
+    const nextOrder = maxCardOrder(nextList._id) + 1;
+    updateCard(card._id, { listId: nextList._id, order: nextOrder });
   }
 
   broadcast('cards:bulk-updated', { listIds: [todayList._id, nextList._id] });
