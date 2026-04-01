@@ -1,34 +1,30 @@
 # Charteris
 
-A personal task management tool that combines the spatial organization of a kanban board with the focus of a daily planner — all in a single Docker container. 
+A personal task management tool designed to separate **intent** from **debt**. It provides a high-level **Cabinet** for your long-term projects and a focused **Briefing** for your daily commitments—all in a single Docker container.
 
 ## Why Charteris?
+After years of bouncing between commercial tools, I found they all fall into the "Commitment Trap." Tools like Todoist link deadlines to daily lists, creating an "overdue snowball" of tasks that eventually becomes demoralizing. Tools like Trello offer great spatial organization but lack a dedicated "Today" focus.
 
-After years of bouncing between commercial task management tools, I kept running into the same tradeoff: either you get a flat to-do list (Todoist) or a project board (Trello), but not both — and licensing fees keep climbing for features I don't need. What I actually wanted was a happy medium: simple enough for daily planning, flexible enough for project-level organization, and open enough to build on.
+Charteris acts as a filter between a **Cabinet** (everything you need to track) and a **Briefing** (the only things you need to do today - or very soon). Inspired by the historical role of a private secretary, it handles the noise so you can focus on the work.
 
-Charteris solves this with **tasks that live in multiple views simultaneously**:
+Charteris solves the common productivity friction points with three core pillars:
 
-- **Inbox** — a single-column capture zone. Tasks land here first, whether created manually or by an automated agent.
-- **Planning** — two fixed lists, **Today** and **Next**, for short-term focus. Drag tasks here from the Inbox or the Board. Shortcut buttons help keep these lists organized quickly.
-- **Board** — an unlimited kanban workspace. Create project-specific lists, group by context, or organize however you like.
+1.  **Cabinet:** A visual board of unlimited lists to organize projects, domains, and "rainy-day" ideas. This satisfies the GTD requirement of offloading everything from your brain.
+2.  **Briefing:** A dedicated planning section with two fixed lists, **Today** and **Next**. Moving a task here is a manual act of commitment, not an automated deadline.
+3.  **Dual Presence:** The "secret sauce." Tasks can exist in the Cabinet and Briefing sections simultaneously. Moving a task to your Briefing doesn't remove it from its project list in Cabinet—it simply flags it for action while preserving all project context.
 
-Because a task can appear in multiple views at once, planning your day is as simple as dragging tasks from project lists on the Board onto "Today." More sophisticated tools lean on deadlines, calendars, and scheduling algorithms — and while Charteris supports due dates and recurrence, I've found that I still prefer to start each day by manually committing to a set of tasks. This tool makes that exceptionally easy.
+### Philosophy of Intent
+Charteris honors the "blank sheet of paper" ritual. By using the **Adjourn** feature, the Briefing is cleared at the start of each day, forcing you to intentionally "cast" tasks from Cabinet into Briefing. This ensures your daily list represents what you *actually* intend to do, rather than a mounting debt of what you didn't finish yesterday.
 
-It's also built as a developer-friendly platform — with a full REST API, MCP server, and a planned agent framework for automated task creation, prioritization, and workflow management.
-
-Charteris was built almost entirely with AI, and is released freely under the MIT license.
+It's also built as a developer-friendly platform—with a full REST API, MCP server, and a planned agent framework for automated task creation and workflow management.
 
 ### Features
-
-- Dark-mode card-based UI with a celestial theme
-- Real-time sync via WebSocket — open multiple tabs without conflicts
-- Drag-and-drop between lists and sections
-- Keyboard-driven workflow (see [Keyboard Shortcuts](#keyboard-shortcuts))
-- Trello JSON import
-- RESTful API with interactive Swagger docs
-- MCP server for AI/LLM tool integration
-- SQLite database — zero configuration, single-file persistence
-- Runs as one Docker container on any platform
+- **Dual-Presence Logic:** Tasks exist in project lists and daily views synchronously.
+- **The Adjourn Ritual:** A manual or automated daily reset to keep your Briefing focused and fresh.
+- **Cast Due Tasks:** A shortcut to instantly identify and move urgent items from Cabinet into Briefing for review.
+- **Progress Visualization:** A real-time progress indicator at the top of Briefing to track daily resolution.
+- **Developer First:** RESTful API, interactive Swagger docs, and MCP server for LLM integration.
+- **Zero Config:** Single Docker container with a SQLite backend.
 
 ## Installation
 
@@ -89,8 +85,8 @@ Charteris organizes work into three **sections**, displayed left to right:
 | Section | Lists | Purpose |
 |---------|-------|---------|
 | **Inbox** | Draft | Capture zone — tasks start here |
-| **Planning** | Today, Next | Short-term focus — what to work on now vs. soon |
-| **Board** | User-created | Long-term organization — projects, contexts, areas |
+| **Briefing** | Today, Next | Short-term commitment — what you are doing now |
+| **Cabinet** | User-created | Long-term organization — projects, contexts, areas |
 
 Inbox and Planning have fixed lists. The Board section supports unlimited user-created lists.
 
@@ -111,8 +107,8 @@ Tasks are the core unit of work. A task can appear in multiple lists across diff
 | `Backspace` | Archive selected task(s) |
 | `Delete` | Delete selected task(s) (with confirmation) |
 | `Arrow Up/Down` | Navigate between tasks (hold `Shift` to multi-select) |
-| `Arrow Left` | Move task toward Inbox (Board → Today) |
-| `Arrow Right` | Move task toward Board (Today → Next → Board) |
+| `Arrow Left` | Move task toward Inbox (Cabinet → Today) |
+| `Arrow Right` | Move task toward Board (Today → Next → Cabinet) |
 | `Escape` | Clear selection |
 
 ### Trello Import
