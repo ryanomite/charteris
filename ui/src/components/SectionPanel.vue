@@ -102,9 +102,9 @@ async function cast() {
           <i class="fas fa-times-circle"></i>
           Adjourn
         </button>
-        <!-- Cabinet: Cast button -->
+        <!-- Briefing: Cast button -->
         <button
-          v-if="section.slug === 'board'"
+          v-if="section.slug === 'planning'"
           class="section__action-btn"
           title="Cast: pull overdue/priority tasks into Today"
           @click="cast"
@@ -286,16 +286,22 @@ async function cast() {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: #fff;
-  color: #000;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 600;
-  transition: opacity var(--transition-default);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: background var(--transition-default), box-shadow var(--transition-default);
+}
+
+.section__action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
 
 .section__action-btn i {
-  color: #000;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.75rem;
 }
 
