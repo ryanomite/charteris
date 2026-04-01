@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { findAllSections, findSectionById, findSectionBySlug } from '../queries/sections';
 import { findAllLists } from '../queries/lists';
 import { findAllCards, deleteCard, updateCard, maxCardOrder, insertCard } from '../queries/cards';
-import { findTaskById, findTasksForCast } from '../queries/tasks';
+import { findTaskById, findTasksForCast, findTasksDueTomorrow } from '../queries/tasks';
 import { broadcast } from '../ws';
 
 const router = Router();
@@ -67,34 +67,54 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
 });
 
 // POST /sections/board/cast
-// Adds cards to Today for all incomplete/unarchived tasks that are overdue,
-// due today, or have priority 1 — skipping any already in Today.
+// → Today: incomplete/unarchived tasks overdue, due today, or priority 1
+// → Next:  incomplete/unarchived tasks due tomorrow (not already in Today or Next)
 router.post('/board/cast', (_req: Request, res: Response) => {
   const planningSec = findSectionBySlug('planning');
   if (!planningSec) { res.status(404).json({ error: 'Planning section not found' }); return; }
 
   const lists = findAllLists({ sectionId: planningSec._id });
   const todayList = lists.find(l => l.name === 'Today');
-  if (!todayList) { res.status(500).json({ error: 'Today list not found' }); return; }
+  const nextList  = lists.find(l => l.name === 'Next');
+  if (!todayList || !nextList) { res.status(500).json({ error: 'Today or Next list not found' }); return; }
 
-  const today = new Date().toISOString().substring(0, 10);
-  const eligible = findTasksForCast(today);
+  const now = new Date();
+  const today    = now.toISOString().substring(0, 10);
+  const tomorrowDate = new Date(now); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = tomorrowDate.toISOString().substring(0, 10);
 
+  // --- Today: overdue, due today, or priority 1 ---
+  const eligibleToday = findTasksForCast(today);
   const todayCards = findAllCards({ listId: todayList._id });
   const todayTaskIds = new Set(todayCards.map(c => c.taskId));
 
-  const newCards = [];
-  for (const task of eligible) {
+  const addedToday = [];
+  for (const task of eligibleToday) {
     if (!todayTaskIds.has(task._id)) {
-      const card = insertCard({ taskId: task._id, listId: todayList._id });
-      newCards.push(card);
+      addedToday.push(insertCard({ taskId: task._id, listId: todayList._id }));
     }
   }
 
-  if (newCards.length > 0) {
-    broadcast('cards:bulk-updated', { listIds: [todayList._id] });
+  // --- Next: due tomorrow, not already in Today or Next ---
+  const eligibleTomorrow = findTasksDueTomorrow(tomorrow);
+  const nextCards = findAllCards({ listId: nextList._id });
+  const nextTaskIds = new Set(nextCards.map(c => c.taskId));
+  // Refresh todayTaskIds to include cards just added
+  const todayTaskIdsUpdated = new Set([...todayTaskIds, ...addedToday.map(c => c.taskId)]);
+
+  const addedNext = [];
+  for (const task of eligibleTomorrow) {
+    if (!todayTaskIdsUpdated.has(task._id) && !nextTaskIds.has(task._id)) {
+      addedNext.push(insertCard({ taskId: task._id, listId: nextList._id }));
+    }
   }
-  res.json({ added: newCards.length, listId: todayList._id });
+
+  const affectedLists = [todayList._id];
+  if (addedNext.length > 0) affectedLists.push(nextList._id);
+  if (addedToday.length > 0 || addedNext.length > 0) {
+    broadcast('cards:bulk-updated', { listIds: affectedLists });
+  }
+  res.json({ addedToday: addedToday.length, addedNext: addedNext.length });
 });
 
 export default router;

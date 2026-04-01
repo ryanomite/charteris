@@ -264,6 +264,17 @@ export function findTasksForCast(today: string): Task[] {
   return rows.map(toTask);
 }
 
+export function findTasksDueTomorrow(tomorrow: string): Task[] {
+  const rows = getDb().prepare(`
+    SELECT * FROM tasks
+    WHERE completed = 0
+      AND archived = 0
+      AND dueDate IS NOT NULL
+      AND date(dueDate) = date(?)
+  `).all(tomorrow) as any[];
+  return rows.map(toTask);
+}
+
 export function deleteTask(id: string): void {
   const db = getDb();
   // Cards referencing this task
