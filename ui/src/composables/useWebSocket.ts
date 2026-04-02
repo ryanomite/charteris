@@ -91,6 +91,10 @@ export function useWebSocket() {
         store.removeCard(data._id);
         break;
 
+      case 'cards:bulk-updated':
+        store.refreshListCards(data.listIds);
+        break;
+
       case 'list:created':
       case 'list:updated':
       case 'list:reordered':

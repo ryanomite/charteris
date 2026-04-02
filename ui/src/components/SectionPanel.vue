@@ -77,7 +77,7 @@ async function adjourn() {
 async function cast() {
   try {
     const { data } = await api.post('/sections/board/cast');
-    await store.refreshListCards([data.listId]);
+    await store.refreshListCards(data.listIds);
   } catch (err) {
     console.error('Cast failed:', err);
   }

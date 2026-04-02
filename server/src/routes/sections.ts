@@ -84,37 +84,40 @@ router.post('/board/cast', (_req: Request, res: Response) => {
   const tomorrow = tomorrowDate.toISOString().substring(0, 10);
 
   // --- Today: overdue, due today, or priority 1 ---
+  // A task may only appear once per section — evict from Next before adding to Today.
   const eligibleToday = findTasksForCast(today);
   const todayCards = findAllCards({ listId: todayList._id });
   const todayTaskIds = new Set(todayCards.map(c => c.taskId));
+  const nextCards = findAllCards({ listId: nextList._id });
+  const nextCardByTaskId = new Map(nextCards.map(c => [c.taskId, c]));
 
-  const addedToday = [];
+  const addedToday: ReturnType<typeof insertCard>[] = [];
   for (const task of eligibleToday) {
     if (!todayTaskIds.has(task._id)) {
+      // Remove from Next if already there (same task can't be in both)
+      const nextCard = nextCardByTaskId.get(task._id);
+      if (nextCard) deleteCard(nextCard._id);
       addedToday.push(insertCard({ taskId: task._id, listId: todayList._id }));
     }
   }
 
   // --- Next: due tomorrow, not already in Today or Next ---
   const eligibleTomorrow = findTasksDueTomorrow(tomorrow);
-  const nextCards = findAllCards({ listId: nextList._id });
-  const nextTaskIds = new Set(nextCards.map(c => c.taskId));
-  // Refresh todayTaskIds to include cards just added
+  // Refresh after evictions and insertions above
+  const nextCardsNow = findAllCards({ listId: nextList._id });
+  const nextTaskIds = new Set(nextCardsNow.map(c => c.taskId));
   const todayTaskIdsUpdated = new Set([...todayTaskIds, ...addedToday.map(c => c.taskId)]);
 
-  const addedNext = [];
+  const addedNext: ReturnType<typeof insertCard>[] = [];
   for (const task of eligibleTomorrow) {
     if (!todayTaskIdsUpdated.has(task._id) && !nextTaskIds.has(task._id)) {
       addedNext.push(insertCard({ taskId: task._id, listId: nextList._id }));
     }
   }
 
-  const affectedLists = [todayList._id];
-  if (addedNext.length > 0) affectedLists.push(nextList._id);
-  if (addedToday.length > 0 || addedNext.length > 0) {
-    broadcast('cards:bulk-updated', { listIds: affectedLists });
-  }
-  res.json({ addedToday: addedToday.length, addedNext: addedNext.length });
+  const listIds = [todayList._id, nextList._id];
+  broadcast('cards:bulk-updated', { listIds });
+  res.json({ listIds, addedToday: addedToday.length, addedNext: addedNext.length });
 });
 
 export default router;
