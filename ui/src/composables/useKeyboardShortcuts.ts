@@ -1,5 +1,6 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useSelection } from './useSelection';
+import { hoveredCardId } from './useHoveredList';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import type { ICard } from '../types';
@@ -44,8 +45,7 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
       const card = store.cards.find(c => c._id === cardId);
       if (!card) continue;
       try {
-        await api.delete(`/tasks/${card.taskId}`);
-        store.removeTask(card.taskId);
+        await api.delete(`/tasks/${card.taskId}?cardId=${card._id}`);
       } catch (err) {
         console.error('Delete failed:', err);
       }
@@ -60,7 +60,7 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
     if (!targetListId || targetListId === card.listId) return;
     try {
       await api.patch(`/cards/${card._id}/move`, { targetListId });
-      await store.fetchDashboard();
+      await store.refreshListCards([card.listId, targetListId]);
     } catch (err) {
       console.error('Move failed:', err);
     }
@@ -102,7 +102,10 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
       return;
     }
 
-    const ids = [...new Set(selectedCards.value.map(c => c._id))];
+    const baseIds = [...new Set(selectedCards.value.map(c => c._id))];
+    const ids = baseIds.length > 0
+      ? baseIds
+      : (hoveredCardId.value ? [hoveredCardId.value] : []);
     if (ids.length === 0 && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
 
     switch (e.key) {

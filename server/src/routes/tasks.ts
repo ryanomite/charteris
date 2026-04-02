@@ -3,6 +3,9 @@ import {
   findAllTasks, findTaskById, insertTask, updateTask, deleteTask,
   propagateToSiblings, deleteTaskSeries, type TaskFilter,
 } from '../queries/tasks';
+import { findAllCards, findCardById, deleteCard } from '../queries/cards';
+import { findListById } from '../queries/lists';
+import { findSectionById } from '../queries/sections';
 import { broadcast } from '../ws';
 
 const router = Router();
@@ -86,6 +89,25 @@ router.put('/:id', (req: Request, res: Response) => {
 router.delete('/:id', (req: Request, res: Response) => {
   const task = findTaskById(req.params.id);
   if (!task) { res.status(404).json({ error: 'Task not found' }); return; }
+
+  const cardId = req.query.cardId as string | undefined;
+  if (cardId) {
+    const card = findCardById(cardId);
+    if (card) {
+      const list = findListById(card.listId);
+      const section = list ? findSectionById(list.sectionId) : null;
+      if (section?.slug === 'planning') {
+        const allTaskCards = findAllCards({ taskId: task._id });
+        const otherCards = allTaskCards.filter(c => c._id !== card._id);
+        if (otherCards.length > 0) {
+          deleteCard(card._id);
+          broadcast('card:deleted', { _id: card._id });
+          res.json({ message: 'Card removed' });
+          return;
+        }
+      }
+    }
+  }
 
   deleteTask(task._id);
   broadcast('task:deleted', { _id: task._id });

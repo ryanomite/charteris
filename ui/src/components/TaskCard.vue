@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { useSelection } from '../composables/useSelection';
+import { hoveredCardId } from '../composables/useHoveredList';
 import api from '../services/api';
 import type { ICard } from '../types';
 
@@ -53,6 +54,9 @@ const taskLabels = computed(() => {
     .filter(Boolean);
 });
 
+function onMouseEnter() { hoveredCardId.value = props.card._id; }
+function onMouseLeave() { if (hoveredCardId.value === props.card._id) hoveredCardId.value = null; }
+
 function onClick(e: MouseEvent) {
   if (e.ctrlKey || e.metaKey || e.shiftKey) {
     selectCard(props.card._id, { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
@@ -92,6 +96,8 @@ async function toggleComplete(e: MouseEvent) {
     @dragend="onDragEnd"
     @touchstart="onCardTouchStart(card, $event)"
     @click="onClick"
+    @mouseenter="onMouseEnter"
+    @mouseleave="onMouseLeave"
   >
     <div class="card__hover-left">
       <button class="card__check" :title="isComplete ? 'Mark incomplete' : 'Mark complete'" @click="toggleComplete">
