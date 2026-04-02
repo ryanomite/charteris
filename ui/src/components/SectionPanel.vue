@@ -309,13 +309,15 @@ async function cast() {
   opacity: 0.85;
 }
 
-/* Planning: exactly 2 lists, no horizontal scroll on desktop */
-.section--planning .section__body {
-  overflow-x: hidden;
+/* Planning: exactly 2 lists, no horizontal scroll on desktop (wide screens only) */
+@media (min-width: 1025px) {
+  .section--planning .section__body {
+    overflow-x: hidden;
+  }
 }
 
-/* Mobile */
-@media (max-width: 768px) {
+/* Tablet + mobile */
+@media (max-width: 1024px) {
   .section--inbox,
   .section--planning,
   .section--board {
@@ -323,7 +325,6 @@ async function cast() {
     min-width: 100%;
   }
 
-  /* Planning scrolls horizontally on mobile just like Board */
   .section--planning .section__body {
     overflow-x: auto;
   }

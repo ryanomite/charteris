@@ -550,4 +550,11 @@ async function onListDropSelf(e: DragEvent) {
   border-radius: 2px;
   flex-shrink: 0;
 }
+
+@media (max-width: 640px) {
+  .list {
+    width: calc(100vw - calc(var(--gap-main) * 2 + 32px));
+    min-width: calc(100vw - calc(var(--gap-main) * 2 + 32px));
+  }
+}
 </style>

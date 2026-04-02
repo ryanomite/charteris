@@ -344,7 +344,8 @@ function onOverlayClick(e: MouseEvent) {
 
         <div class="modal__footer">
           <button class="modal__btn modal__btn--archive" @click="archiveTask">
-            <i class="fas fa-archive"></i> Archive
+            <i :class="['fas', task?.archived ? 'fa-box-open' : 'fa-archive']"></i>
+            {{ task?.archived ? 'Unarchive' : 'Archive' }}
           </button>
 
           <!-- Delete -->

@@ -6,7 +6,14 @@ const props = defineProps<{ hiddenSlugs: Set<string> }>();
 const emit = defineEmits<{ (e: 'toggle', slug: string): void }>();
 
 const store = useTaskStore();
-const sections = computed(() => store.sortedSections);
+const sections = computed(() => {
+  return store.sortedSections.filter(s => {
+    if (s.slug !== 'inbox') return true;
+    const inboxLists = store.listsForSection(s._id);
+    const draftList = inboxLists.find(l => l.name === 'Draft');
+    return draftList ? store.cardsForList(draftList._id).length > 0 : false;
+  });
+});
 
 const settingsOpen = ref(false);
 
