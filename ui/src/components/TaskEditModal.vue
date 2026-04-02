@@ -150,13 +150,8 @@ async function archiveTask() {
 async function deleteTask() {
   if (!task.value) return;
   try {
-    const cardParam = props.card ? `?cardId=${props.card._id}` : '';
-    const { data } = await api.delete(`/tasks/${task.value._id}${cardParam}`);
-    if (data?.message === 'Card removed') {
-      store.removeCard(props.card!._id);
-    } else {
-      store.removeTask(task.value._id);
-    }
+    await api.delete(`/tasks/${task.value._id}`);
+    store.removeTask(task.value._id);
     emit('close');
   } catch (err) {
     console.error('Delete failed:', err);

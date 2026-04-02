@@ -45,7 +45,7 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
       const card = store.cards.find(c => c._id === cardId);
       if (!card) continue;
       try {
-        await api.delete(`/tasks/${card.taskId}?cardId=${card._id}`);
+        await api.delete(`/cards/${card._id}`);
       } catch (err) {
         console.error('Delete failed:', err);
       }
