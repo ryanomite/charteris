@@ -82,6 +82,7 @@ async function toggleComplete(e: MouseEvent) {
     class="card"
     :class="{
       'card--complete': isComplete,
+      'card--archived': task?.archived,
       'card--dragging': isDragging,
       'card--selected': isSelected(card._id),
       'card--focused': isFocused(card._id),
@@ -144,6 +145,11 @@ async function toggleComplete(e: MouseEvent) {
 
 .card--complete {
   opacity: 0.75;
+}
+
+.card--archived {
+  opacity: 0.4;
+  filter: grayscale(0.5);
 }
 
 .card--complete .card__title {
