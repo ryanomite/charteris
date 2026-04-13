@@ -59,6 +59,12 @@ export function archiveList(id: string): List | null {
   return findListById(id);
 }
 
+export function unarchiveList(id: string): List | null {
+  const ts = now();
+  getDb().prepare('UPDATE lists SET archived = 0, updatedAt = ? WHERE id = ?').run(ts, id);
+  return findListById(id);
+}
+
 export function deleteList(id: string): void {
   getDb().prepare('DELETE FROM lists WHERE id = ?').run(id);
 }

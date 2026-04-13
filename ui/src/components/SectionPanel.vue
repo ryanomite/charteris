@@ -270,6 +270,7 @@ async function cast() {
   flex: 1;
   min-height: 0;
   align-items: flex-start;
+  scroll-snap-type: x proximity;
 }
 
 /* Inbox: single list, no horizontal scroll */

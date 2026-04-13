@@ -9,7 +9,7 @@ const router = Router();
 
 router.get('/', (_req: Request, res: Response) => {
   const sections = findAllSections();
-  const lists = findAllLists();
+  const lists = findAllLists({ includeArchived: true });
   const tasks = findAllTasks();
   const cards = findAllCards();
   const labels = findAllLabels();

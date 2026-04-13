@@ -2,6 +2,7 @@ import { onMounted, onUnmounted } from 'vue';
 import { useSelection } from './useSelection';
 import { hoveredCardId } from './useHoveredList';
 import { useTaskStore } from '../stores/taskStore';
+import { handleRecurringCompletion } from './useRecurrence';
 import api from '../services/api';
 import type { ICard } from '../types';
 
@@ -18,6 +19,9 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
       try {
         const { data } = await api.patch(`/tasks/${task._id}/complete`);
         store.upsertTask(data);
+        if (data.completed && data.recurrence) {
+          await handleRecurringCompletion(data._id);
+        }
       } catch (err) {
         console.error('Toggle complete failed:', err);
       }

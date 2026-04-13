@@ -67,6 +67,16 @@ async function archiveAllCompleted() {
           </button>
         </li>
         <li role="none">
+          <button
+            role="menuitem"
+            class="settings-dropdown__item"
+            @click="store.showArchivedLists = !store.showArchivedLists; closeSettings()"
+          >
+            <i :class="['fas', store.showArchivedLists ? 'fa-eye-slash' : 'fa-eye']"></i>
+            {{ store.showArchivedLists ? 'Hide archived lists' : 'Show archived lists' }}
+          </button>
+        </li>
+        <li role="none">
           <button role="menuitem" class="settings-dropdown__item" @click="archiveAllCompleted">
             <i class="fas fa-archive"></i>
             Archive completed tasks

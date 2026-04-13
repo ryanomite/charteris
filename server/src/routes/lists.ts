@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { findAllLists, findListById, insertList, updateList, deleteList, archiveList, maxListOrder, shiftListOrders } from '../queries/lists';
+import { findAllLists, findListById, insertList, updateList, deleteList, archiveList, unarchiveList, maxListOrder, shiftListOrders } from '../queries/lists';
 import { findAllCards, deleteCardsByListId } from '../queries/cards';
 import { updateTask } from '../queries/tasks';
 import { findSectionById } from '../queries/sections';
@@ -64,16 +64,28 @@ router.patch('/:id/archive', (req: Request, res: Response) => {
   if (!list) { res.status(404).json({ error: 'List not found' }); return; }
   if (list.isFixed) { res.status(400).json({ error: 'Fixed lists cannot be archived' }); return; }
 
-  // Archive all tasks in this list first
-  const cards = findAllCards({ listId: list._id });
-  for (const card of cards) {
-    const updated = updateTask(card.taskId, { archived: true });
-    if (updated) broadcast('task:updated', updated);
-  }
+  if (list.archived) {
+    // Unarchive list and its tasks
+    const updated = unarchiveList(list._id);
+    const cards = findAllCards({ listId: list._id });
+    for (const card of cards) {
+      const updatedTask = updateTask(card.taskId, { archived: false });
+      if (updatedTask) broadcast('task:updated', updatedTask);
+    }
+    broadcast('list:updated', updated);
+    res.json(updated);
+  } else {
+    // Archive all tasks in this list first
+    const cards = findAllCards({ listId: list._id });
+    for (const card of cards) {
+      const updated = updateTask(card.taskId, { archived: true });
+      if (updated) broadcast('task:updated', updated);
+    }
 
-  const updated = archiveList(list._id);
-  broadcast('list:updated', updated);
-  res.json(updated);
+    const updated = archiveList(list._id);
+    broadcast('list:updated', updated);
+    res.json(updated);
+  }
 });
 
 router.patch('/:id/reorder', (req: Request, res: Response) => {

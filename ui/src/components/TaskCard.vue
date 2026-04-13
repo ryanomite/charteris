@@ -4,10 +4,11 @@ import { useTaskStore } from '../stores/taskStore';
 import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { useSelection } from '../composables/useSelection';
 import { hoveredCardId } from '../composables/useHoveredList';
+import { handleRecurringCompletion } from '../composables/useRecurrence';
 import api from '../services/api';
 import type { ICard } from '../types';
 
-const props = defineProps<{ card: ICard }>();
+const props = defineProps<{ card: ICard; sectionSlug?: string }>();
 const emit = defineEmits<{ (e: 'open', card: ICard): void }>();
 const store = useTaskStore();
 const { onDragStart, onDragEnd, onCardTouchStart } = useDragDrop();
@@ -33,6 +34,7 @@ const priorityColor = computed(() => {
 const dueStatus = computed(() => {
   const d = task.value?.dueDate;
   if (!d) return null;
+  if (task.value?.completed) return null;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrow = new Date(today);
@@ -44,7 +46,15 @@ const dueStatus = computed(() => {
   if (dueDay < today) return 'overdue';
   if (dueDay.getTime() === today.getTime()) return 'due-today';
   if (dueDay.getTime() === tomorrow.getTime()) return 'due-tomorrow';
-  return null;
+  return 'due-future';
+});
+
+const dueFutureLabel = computed(() => {
+  if (dueStatus.value !== 'due-future') return '';
+  const d = task.value?.dueDate;
+  if (!d) return '';
+  const parts = d.split('-').map(Number);
+  return `${parts[1]}/${parts[2]}`;
 });
 
 const taskLabels = computed(() => {
@@ -52,6 +62,26 @@ const taskLabels = computed(() => {
   return task.value.labels
     .map(id => store.labelById(id))
     .filter(Boolean);
+});
+
+// Determine action button: left arrow for Cabinet, right arrow for non-orphaned Briefing
+const actionArrow = computed(() => {
+  if (!task.value) return null;
+  if (props.sectionSlug === 'board') {
+    // Cabinet: show left arrow to add to Today (if not already in a planning list)
+    return 'left';
+  }
+  if (props.sectionSlug === 'planning') {
+    // Briefing: show right arrow if task has a card in the Cabinet (non-orphaned)
+    const boardSection = store.sections.find(s => s.slug === 'board');
+    if (!boardSection) return null;
+    const boardListIds = store.lists
+      .filter(l => l.sectionId === boardSection._id && !l.archived)
+      .map(l => l._id);
+    const hasBoard = store.cards.some(c => c.taskId === props.card.taskId && boardListIds.includes(c.listId));
+    return hasBoard ? 'right' : null;
+  }
+  return null;
 });
 
 function onMouseEnter() { hoveredCardId.value = props.card._id; }
@@ -71,8 +101,41 @@ async function toggleComplete(e: MouseEvent) {
   try {
     const { data } = await api.patch(`/tasks/${task.value._id}/complete`);
     store.upsertTask(data);
+    // If recurring task was just completed, clone it
+    if (data.completed && data.recurrence) {
+      await handleRecurringCompletion(data._id);
+    }
   } catch (err) {
     console.error('Toggle complete failed:', err);
+  }
+}
+
+async function onActionClick(e: MouseEvent) {
+  e.stopPropagation();
+  if (!task.value) return;
+  if (actionArrow.value === 'left') {
+    // Add to Today
+    const planningSection = store.sections.find(s => s.slug === 'planning');
+    if (!planningSection) return;
+    const todayList = store.listsForSection(planningSection._id).find(l => l.name === 'Today');
+    if (!todayList) return;
+    // Check if already in Today
+    const alreadyInToday = store.cards.some(c => c.taskId === props.card.taskId && c.listId === todayList._id);
+    if (alreadyInToday) return;
+    try {
+      const { data } = await api.post('/cards', { taskId: task.value._id, listId: todayList._id });
+      store.upsertCard(data);
+    } catch (err) {
+      console.error('Add to Today failed:', err);
+    }
+  } else if (actionArrow.value === 'right') {
+    // Remove from the Briefing list this card is in
+    try {
+      await api.delete(`/cards/${props.card._id}`);
+      store.removeCard(props.card._id);
+    } catch (err) {
+      console.error('Remove from Briefing failed:', err);
+    }
   }
 }
 </script>
@@ -108,7 +171,11 @@ async function toggleComplete(e: MouseEvent) {
     <div class="card__body">
       <span class="card__title">{{ task.title }}</span>
       <div v-if="dueStatus || taskLabels.length" class="card__tags">
-        <span v-if="dueStatus" class="card__due" :class="`card__due--${dueStatus}`">
+        <span v-if="dueStatus === 'due-future'" class="card__due card__due--future">
+          <i class="fas fa-calendar-alt"></i>
+          {{ dueFutureLabel }}
+        </span>
+        <span v-else-if="dueStatus" class="card__due" :class="`card__due--${dueStatus}`">
           <i class="fas fa-clock"></i>
           {{ dueStatus === 'overdue' ? 'Overdue' : dueStatus === 'due-today' ? 'Today' : 'Tomorrow' }}
         </span>
@@ -118,9 +185,13 @@ async function toggleComplete(e: MouseEvent) {
         </span>
       </div>
     </div>
-    <div class="card__hover-right">
-      <button class="card__action" title="Move card">
-        <i class="fas fa-arrows-alt"></i>
+    <div v-if="actionArrow" class="card__hover-right">
+      <button
+        class="card__action"
+        :title="actionArrow === 'left' ? 'Add to Today' : 'Remove from Briefing'"
+        @click="onActionClick"
+      >
+        <i :class="['fas', actionArrow === 'left' ? 'fa-arrow-left' : 'fa-arrow-right']"></i>
       </button>
     </div>
   </div>
@@ -206,6 +277,11 @@ async function toggleComplete(e: MouseEvent) {
 .card__due--due-tomorrow {
   color: var(--priority-3);
   background: rgba(252, 191, 73, 0.15);
+}
+
+.card__due--future {
+  color: #999;
+  background: rgba(153, 153, 153, 0.15);
 }
 
 .card__body {

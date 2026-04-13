@@ -19,6 +19,7 @@ const isOver = ref(false);
 const adding = ref(false);
 const newTitle = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
+const lastCreatedCardId = ref<string | null>(null);
 
 const menuOpen = ref(false);
 const renaming = ref(false);
@@ -33,6 +34,11 @@ const droppable = computed(() => canDrop(props.list._id, props.section.slug));
 const isSameListDrag = computed(() => dragCard.value?.listId === props.list._id);
 
 function onDragOver(e: DragEvent) {
+  // Allow list drag-over to bubble through
+  if (dragList.value && dragList.value.sectionId === props.list.sectionId) {
+    e.preventDefault();
+    return;
+  }
   if (!droppable.value) return;
   e.preventDefault();
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -61,6 +67,8 @@ function onDragLeave() {
 }
 
 function handleDrop(e: DragEvent) {
+  // Let list drops bubble up to the list container
+  if (dragList.value) return;
   e.preventDefault();
   if (!droppable.value) return;
   const idx = isSameListDrag.value && dropIndex.value >= 0 ? dropIndex.value : cards.value.length;
@@ -80,17 +88,99 @@ function cancelAdding() {
   newTitle.value = '';
 }
 
+function editLastCreated() {
+  if (!lastCreatedCardId.value) return;
+  const card = store.cards.find(c => c._id === lastCreatedCardId.value);
+  if (card) {
+    // Set adding to false first to prevent blur from triggering submitNewCard
+    adding.value = false;
+    newTitle.value = '';
+    emit('openCard', card);
+  }
+}
+
+function parseShortcuts(raw: string) {
+  let priority: number | null = null;
+  const labelNames: string[] = [];
+  let addToToday = false;
+
+  // Match standalone ! (not preceded by a non-whitespace char)
+  // At start of string or preceded by whitespace
+  const bangRe = /(?:^|(?<=\s))!(?=\s|$)/g;
+  if (bangRe.test(raw)) {
+    addToToday = true;
+    raw = raw.replace(/(?:^|(?<=\s))!(?=\s|$)/g, ' ');
+  }
+
+  // Match p1, p2, p3, p4 as standalone tokens
+  const prioRe = /(?:^|(?<=\s))p([1-4])(?=\s|$)/gi;
+  const prioMatch = prioRe.exec(raw);
+  if (prioMatch) {
+    priority = parseInt(prioMatch[1], 10);
+    raw = raw.replace(/(?:^|(?<=\s))p[1-4](?=\s|$)/gi, ' ');
+  }
+
+  // Match @label tokens
+  const labelRe = /(?:^|(?<=\s))@(\S+)/g;
+  let lm;
+  while ((lm = labelRe.exec(raw)) !== null) {
+    labelNames.push(lm[1].toLowerCase());
+  }
+  if (labelNames.length) {
+    raw = raw.replace(/(?:^|(?<=\s))@\S+/g, ' ');
+  }
+
+  const title = raw.replace(/\s+/g, ' ').trim();
+  return { title, priority, labelNames, addToToday };
+}
+
 async function submitNewCard() {
-  const t = newTitle.value.trim();
-  if (!t) {
+  const rawInput = newTitle.value.trim();
+  if (!rawInput) {
     cancelAdding();
     return;
   }
   try {
-    const { data: task } = await api.post('/tasks', { title: t });
+    const { title, priority, labelNames, addToToday } = parseShortcuts(rawInput);
+    if (!title) {
+      cancelAdding();
+      return;
+    }
+
+    // Resolve label names to IDs, creating any that don't exist
+    const labelIds: string[] = [];
+    for (const name of labelNames) {
+      let label = store.labels.find(l => l.name.toLowerCase() === name);
+      if (!label) {
+        const { data } = await api.post('/labels', { name });
+        store.upsertLabel(data);
+        label = data;
+      }
+      labelIds.push(label!._id);
+    }
+
+    const taskPayload: Record<string, unknown> = { title };
+    if (priority !== null) taskPayload.priority = priority;
+    if (labelIds.length) taskPayload.labels = labelIds;
+
+    const { data: task } = await api.post('/tasks', taskPayload);
     store.upsertTask(task);
     const { data: card } = await api.post('/cards', { taskId: task._id, listId: props.list._id });
     store.upsertCard(card);
+    lastCreatedCardId.value = card._id;
+
+    // If ! shortcut used, also add card to Today list (if not already in a planning list)
+    if (addToToday) {
+      const planningSection = store.sections.find(s => s.slug === 'planning');
+      if (planningSection) {
+        const todayList = store.listsForSection(planningSection._id).find(l => l.name === 'Today');
+        if (todayList && todayList._id !== props.list._id) {
+          const { data: todayCard } = await api.post('/cards', { taskId: task._id, listId: todayList._id });
+          store.upsertCard(todayCard);
+        }
+      }
+    }
+
     newTitle.value = '';
     nextTick(() => inputRef.value?.focus());
   } catch (err) {
@@ -201,9 +291,19 @@ async function archiveList() {
   if (!confirm(`Archive "${props.list.name}" and all its tasks?`)) return;
   try {
     const { data } = await api.patch(`/lists/${props.list._id}/archive`);
-    store.removeList(data._id);
+    store.upsertList(data);
   } catch (err) {
     console.error('Archive list failed:', err);
+  }
+}
+
+async function unarchiveList() {
+  closeMenu();
+  try {
+    const { data } = await api.patch(`/lists/${props.list._id}/archive`);
+    store.upsertList(data);
+  } catch (err) {
+    console.error('Unarchive list failed:', err);
   }
 }
 
@@ -254,6 +354,7 @@ async function onListDropSelf(e: DragEvent) {
       'list--dragging': dragList?._id === list._id,
       'list--list-drop-before': isListDragOver && listDropBefore,
       'list--list-drop-after': isListDragOver && !listDropBefore,
+      'list--archived': list.archived,
     }"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
@@ -323,6 +424,12 @@ async function onListDropSelf(e: DragEvent) {
               Archive list
             </button>
           </li>
+          <li v-if="list.archived" role="none">
+            <button role="menuitem" class="dropdown__item" @click="unarchiveList">
+              <i class="fas fa-box-open"></i>
+              Unarchive list
+            </button>
+          </li>
         </ul>
         <div v-if="menuOpen" class="dropdown__backdrop" @click="closeMenu"></div>
       </div>
@@ -337,7 +444,7 @@ async function onListDropSelf(e: DragEvent) {
       <template v-for="(card, i) in cards" :key="card._id">
         <div v-if="isSameListDrag && dropIndex === i && dragCard?._id !== card._id" class="drop-indicator"></div>
         <div :data-card-id="card._id">
-          <TaskCard :card="card" @open="(c: ICard) => emit('openCard', c)" />
+          <TaskCard :card="card" :section-slug="section.slug" @open="(c: ICard) => emit('openCard', c)" />
         </div>
       </template>
       <div v-if="isSameListDrag && dropIndex === cards.length" class="drop-indicator"></div>
@@ -350,6 +457,7 @@ async function onListDropSelf(e: DragEvent) {
         placeholder="Card title..."
         @keydown.enter.prevent="submitNewCard"
         @keydown.escape="cancelAdding"
+        @keydown.up.prevent="editLastCreated"
         @blur="submitNewCard"
       />
     </div>
@@ -371,6 +479,7 @@ async function onListDropSelf(e: DragEvent) {
   border-radius: var(--radius-list);
   overflow: visible;
   box-shadow: 0 4px 13px #0006, 0 0 40px #0003;
+  scroll-snap-align: start;
 }
 
 .list__header {
@@ -534,6 +643,11 @@ async function onListDropSelf(e: DragEvent) {
 .list--dragging {
   opacity: 0.4;
   pointer-events: none;
+}
+
+.list--archived {
+  opacity: 0.4;
+  filter: grayscale(0.5);
 }
 
 .list--list-drop-before {

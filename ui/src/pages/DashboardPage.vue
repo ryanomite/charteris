@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
 import { useWebSocket } from '../composables/useWebSocket';
+import { runRecurrenceChecks, needsRecurrenceCheck } from '../composables/useRecurrence';
 import SectionPanel from '../components/SectionPanel.vue';
 import MobileNav from '../components/MobileNav.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
@@ -33,6 +34,9 @@ function toggleSection(slug: string) {
 useKeyboardShortcuts(openCard);
 const { connected } = useWebSocket();
 
+// Periodic recurrence check (every 60s)
+let recurrenceTimer: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   await store.fetchDashboard();
   // Auto-hide inbox if Draft list has no cards
@@ -43,6 +47,18 @@ onMounted(async () => {
       hiddenSlugs.value = new Set(['inbox']);
     }
   }
+  // Run recurrence checks on initial load
+  await runRecurrenceChecks();
+  // Check periodically for date changes
+  recurrenceTimer = setInterval(async () => {
+    if (needsRecurrenceCheck()) {
+      await runRecurrenceChecks();
+    }
+  }, 60_000);
+});
+
+onUnmounted(() => {
+  if (recurrenceTimer) clearInterval(recurrenceTimer);
 });
 </script>
 

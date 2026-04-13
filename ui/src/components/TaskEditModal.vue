@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import { computeNextDueDate, handleRecurringCompletion } from '../composables/useRecurrence';
 import api from '../services/api';
 import type { ICard, ITask, ILabel, ISubtask } from '../types';
 
@@ -109,11 +110,18 @@ function removeSubtask(idx: number) {
 async function save() {
   if (!task.value) return;
   try {
+    // If recurrence changed and is non-empty, auto-compute due date
+    let finalDueDate = dueDate.value || null;
+    if (recurrence.value && recurrence.value !== task.value.recurrence) {
+      const computed = computeNextDueDate(recurrence.value);
+      if (computed) finalDueDate = computed;
+    }
+
     const payload: Partial<ITask> = {
       title: title.value,
       description: description.value,
       priority: priority.value,
-      dueDate: dueDate.value || null,
+      dueDate: finalDueDate,
       recurrence: recurrence.value,
       subtasks: subtasks.value,
       labels: taskLabels.value,
@@ -131,6 +139,9 @@ async function toggleComplete() {
   try {
     const { data } = await api.patch(`/tasks/${task.value._id}/complete`);
     store.upsertTask(data);
+    if (data.completed && data.recurrence) {
+      await handleRecurringCompletion(data._id);
+    }
   } catch (err) {
     console.error('Toggle complete failed:', err);
   }

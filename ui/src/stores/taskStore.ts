@@ -11,6 +11,7 @@ export const useTaskStore = defineStore('tasks', () => {
   const labels = ref<ILabel[]>([]);
   const loading = ref(false);
   const showArchived = ref(false);
+  const showArchivedLists = ref(false);
 
   // Fetch full dashboard state
   async function fetchDashboard() {
@@ -32,10 +33,10 @@ export const useTaskStore = defineStore('tasks', () => {
     [...sections.value].sort((a, b) => a.order - b.order)
   );
 
-  // Get lists for a section, sorted by order (excluding archived)
+  // Get lists for a section, sorted by order (excluding archived unless showArchivedLists)
   function listsForSection(sectionId: string): IList[] {
     return lists.value
-      .filter(l => l.sectionId === sectionId && !l.archived)
+      .filter(l => l.sectionId === sectionId && (!l.archived || showArchivedLists.value))
       .sort((a, b) => a.order - b.order);
   }
 
@@ -159,7 +160,7 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   return {
-    sections, lists, tasks, cards, labels, loading, showArchived,
+    sections, lists, tasks, cards, labels, loading, showArchived, showArchivedLists,
     sortedSections, fetchDashboard,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
     upsertTask, removeTask,
