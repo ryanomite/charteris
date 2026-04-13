@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
-import { useDragDrop, dragCard, dragList } from '../composables/useDragDrop';
+import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
 import api from '../services/api';
 import TaskCard from './TaskCard.vue';
@@ -10,7 +10,7 @@ import type { IList, ISection, ICard } from '../types';
 const props = defineProps<{ list: IList; section: ISection }>();
 const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
 const store = useTaskStore();
-const { canDrop, onDrop, onListDragStart, onListDragEnd, onListDrop } = useDragDrop();
+const { canDrop, onDrop } = useDragDrop();
 
 const cards = computed(() => store.cardsForList(props.list._id));
 
@@ -26,19 +26,10 @@ const renaming = ref(false);
 const renameValue = ref('');
 const renameInputRef = ref<HTMLInputElement | null>(null);
 
-// List drag-reorder state
-const isListDragOver = ref(false);
-const listDropBefore = ref(true);
-
 const droppable = computed(() => canDrop(props.list._id, props.section.slug));
 const isSameListDrag = computed(() => dragCard.value?.listId === props.list._id);
 
 function onDragOver(e: DragEvent) {
-  // Allow list drag-over to bubble through
-  if (dragList.value && dragList.value.sectionId === props.list.sectionId) {
-    e.preventDefault();
-    return;
-  }
   if (!droppable.value) return;
   e.preventDefault();
   if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -67,8 +58,6 @@ function onDragLeave() {
 }
 
 function handleDrop(e: DragEvent) {
-  // Let list drops bubble up to the list container
-  if (dragList.value) return;
   e.preventDefault();
   if (!droppable.value) return;
   const idx = isSameListDrag.value && dropIndex.value >= 0 ? dropIndex.value : cards.value.length;
@@ -307,42 +296,35 @@ async function unarchiveList() {
   }
 }
 
-// --- List header drag-to-reorder ---
+// --- List move left/right ---
 
-function onListHeaderDragStart(e: DragEvent) {
-  if (dragCard.value) { e.preventDefault(); return; } // card drag takes priority
-  if (props.list.isFixed) { e.preventDefault(); return; }
-  onListDragStart(props.list, e);
-}
+const sectionLists = computed(() => store.listsForSection(props.section._id));
+const listIndex = computed(() => sectionLists.value.findIndex(l => l._id === props.list._id));
+const canMoveLeft = computed(() => !props.list.isFixed && listIndex.value > 0);
+const canMoveRight = computed(() => !props.list.isFixed && listIndex.value < sectionLists.value.length - 1);
 
-function onListHeaderDragEnd() {
-  onListDragEnd();
-  isListDragOver.value = false;
-}
-
-function onListDragOverSelf(e: DragEvent) {
-  if (!dragList.value || dragList.value._id === props.list._id) return;
-  if (dragList.value.sectionId !== props.list.sectionId) return;
-  e.preventDefault();
-  e.stopPropagation();
-  isListDragOver.value = true;
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-  listDropBefore.value = e.clientX < rect.left + rect.width / 2;
-}
-
-function onListDragLeaveSelf(e: DragEvent) {
-  // Only clear if we're leaving the list element itself (not entering a child)
-  if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
-    isListDragOver.value = false;
+async function moveListLeft() {
+  closeMenu();
+  if (!canMoveLeft.value) return;
+  const neighbor = sectionLists.value[listIndex.value - 1];
+  try {
+    await api.patch(`/lists/${props.list._id}/reorder`, { order: neighbor.order });
+    await store.refreshSectionLists(props.section._id);
+  } catch (err) {
+    console.error('Move list left failed:', err);
   }
 }
 
-async function onListDropSelf(e: DragEvent) {
-  if (!dragList.value || dragList.value._id === props.list._id) return;
-  e.preventDefault();
-  e.stopPropagation();
-  isListDragOver.value = false;
-  await onListDrop(props.list, listDropBefore.value);
+async function moveListRight() {
+  closeMenu();
+  if (!canMoveRight.value) return;
+  const neighbor = sectionLists.value[listIndex.value + 1];
+  try {
+    await api.patch(`/lists/${props.list._id}/reorder`, { order: neighbor.order });
+    await store.refreshSectionLists(props.section._id);
+  } catch (err) {
+    console.error('Move list right failed:', err);
+  }
 }
 </script>
 
@@ -351,23 +333,12 @@ async function onListDropSelf(e: DragEvent) {
     class="list"
     :class="{
       'list--drag-over': isOver && droppable,
-      'list--dragging': dragList?._id === list._id,
-      'list--list-drop-before': isListDragOver && listDropBefore,
-      'list--list-drop-after': isListDragOver && !listDropBefore,
       'list--archived': list.archived,
     }"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
-    @dragover="onListDragOverSelf"
-    @dragleave="onListDragLeaveSelf"
-    @drop="onListDropSelf"
   >
-    <div
-      class="list__header"
-      :draggable="!dragCard && !list.isFixed"
-      @dragstart="onListHeaderDragStart"
-      @dragend="onListHeaderDragEnd"
-    >
+    <div class="list__header">
       <input
         v-if="renaming"
         ref="renameInputRef"
@@ -430,6 +401,18 @@ async function onListDropSelf(e: DragEvent) {
               Unarchive list
             </button>
           </li>
+          <li v-if="canMoveLeft" role="none">
+            <button role="menuitem" class="dropdown__item" @click="moveListLeft">
+              <i class="fas fa-arrow-left"></i>
+              Move left
+            </button>
+          </li>
+          <li v-if="canMoveRight" role="none">
+            <button role="menuitem" class="dropdown__item" @click="moveListRight">
+              <i class="fas fa-arrow-right"></i>
+              Move right
+            </button>
+          </li>
         </ul>
         <div v-if="menuOpen" class="dropdown__backdrop" @click="closeMenu"></div>
       </div>
@@ -488,7 +471,6 @@ async function onListDropSelf(e: DragEvent) {
   justify-content: space-between;
   padding: 10px 12px;
   flex-shrink: 0;
-  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -640,22 +622,9 @@ async function onListDropSelf(e: DragEvent) {
   outline-offset: -2px;
 }
 
-.list--dragging {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
 .list--archived {
   opacity: 0.4;
   filter: grayscale(0.5);
-}
-
-.list--list-drop-before {
-  box-shadow: -4px 0 0 0 var(--accent, #457B9D), 0 4px 13px #0006, 0 0 40px #0003;
-}
-
-.list--list-drop-after {
-  box-shadow: 4px 0 0 0 var(--accent, #457B9D), 0 4px 13px #0006, 0 0 40px #0003;
 }
 
 .drop-indicator {
