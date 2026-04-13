@@ -271,7 +271,7 @@ async function cast() {
   min-height: 0;
   align-items: flex-start;
   scroll-snap-type: x proximity;
-  scroll-padding-left: calc(var(--gap-main)*0.9);
+  scroll-padding-left: calc(var(--gap-main)*1);
 }
 
 /* Inbox: single list, no horizontal scroll */
