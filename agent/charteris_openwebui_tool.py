@@ -21,6 +21,10 @@ class Tools:
             default="",
             description="Your Charteris API token (the ?token= value)",
         )
+        default_list_name: str = Field(
+            default="",
+            description="Optional default list name for new tasks (e.g. Inbox, Work). Leave empty to skip list assignment unless list_name is provided.",
+        )
 
     def __init__(self):
         self.valves = self.Valves()
@@ -160,7 +164,7 @@ class Tools:
     def create_task(
         self,
         title: str,
-        list_name: str = "Inbox",
+        list_name: str = "",
         description: str = "",
         priority: int = None,
         due_date: str = None,
@@ -172,7 +176,7 @@ class Tools:
         Args:
             title: Task title. Supports macros: p1-p5 (priority), @Label (labels),
                    #ListName (cabinet list), ! (add to Today), date keywords (today/tomorrow/weekday).
-            list_name: Target list name (default "Inbox"). Created in Cabinet if it doesn't exist.
+            list_name: Target list name. If omitted, uses valve default_list_name. If both are empty, no list/card is assigned.
             description: Optional longer description.
             priority: Priority 1 (urgent) to 5 (rainy day / someday). Omit to leave unset.
             due_date: ISO date string, e.g. "2026-06-01". Omit if none.
@@ -195,22 +199,27 @@ class Tools:
         lists = dashboard.get("lists", [])
         sections = dashboard.get("sections", [])
 
-        target_list = next((l for l in lists if l.get("name", "").lower() == list_name.lower()), None)
+        effective_list_name = (list_name or self.valves.default_list_name or "").strip()
 
-        if not target_list:
+        target_list = None
+        if effective_list_name:
+            target_list = next((l for l in lists if l.get("name", "").lower() == effective_list_name.lower()), None)
+
+        if effective_list_name and not target_list:
             # Create in Cabinet/Board
             board = next((s for s in sections if s.get("slug") == "board"), None)
             if not board:
                 return "Error: Board section not found"
-            new_list = self._post("/lists", {"name": list_name, "sectionId": board["_id"]})
+            new_list = self._post("/lists", {"name": effective_list_name, "sectionId": board["_id"]})
             target_list = new_list
 
         # Create the task
         task = self._post("/tasks", body)
         task_id = task["_id"]
 
-        # Add card to target list
-        self._post("/cards", {"taskId": task_id, "listId": target_list["_id"]})
+        # Add card to target list when a list name was provided or configured.
+        if target_list:
+            self._post("/cards", {"taskId": task_id, "listId": target_list["_id"]})
 
         # Optionally add to Today
         if add_to_today:
