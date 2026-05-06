@@ -54,7 +54,8 @@ html, body {
   background: linear-gradient(169deg, #000, #003474 40%, #005551);
   background-attachment: fixed;
   color: var(--text-primary);
-  overflow: hidden;
+  overflow: auto;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
