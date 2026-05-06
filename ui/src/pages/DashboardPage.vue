@@ -7,11 +7,14 @@ import { runRecurrenceChecks, needsRecurrenceCheck } from '../composables/useRec
 import SectionPanel from '../components/SectionPanel.vue';
 import MobileNav from '../components/MobileNav.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
+import TaskImportModal from '../components/TaskImportModal.vue';
 import type { ICard } from '../types';
 
 const store = useTaskStore();
 const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
+const importOpen = ref(false);
+const importTargetListId = ref<string | null>(null);
 
 function openCard(card: ICard) {
   editingCard.value = card;
@@ -31,14 +34,34 @@ function toggleSection(slug: string) {
   hiddenSlugs.value = next;
 }
 
+function openImport(payload?: { listId?: string }) {
+  importTargetListId.value = payload?.listId || null;
+  importOpen.value = true;
+}
+
+function closeImport() {
+  importOpen.value = false;
+  importTargetListId.value = null;
+}
+
 useKeyboardShortcuts(openCard);
 const { connected } = useWebSocket();
 
 // Periodic recurrence check (every 60s)
 let recurrenceTimer: ReturnType<typeof setInterval> | null = null;
 
-onMounted(async () => {
+async function refreshFromServer() {
   await store.fetchDashboard();
+  await runRecurrenceChecks();
+}
+
+async function onVisibilityOrFocus() {
+  if (document.visibilityState !== 'visible') return;
+  await refreshFromServer();
+}
+
+onMounted(async () => {
+  await refreshFromServer();
   // Auto-hide inbox if Draft list has no cards
   const inboxSection = store.sortedSections.find(s => s.slug === 'inbox');
   if (inboxSection) {
@@ -55,10 +78,17 @@ onMounted(async () => {
       await runRecurrenceChecks();
     }
   }, 60_000);
+
+  window.addEventListener('focus', onVisibilityOrFocus);
+  window.addEventListener('online', onVisibilityOrFocus);
+  document.addEventListener('visibilitychange', onVisibilityOrFocus);
 });
 
 onUnmounted(() => {
   if (recurrenceTimer) clearInterval(recurrenceTimer);
+  window.removeEventListener('focus', onVisibilityOrFocus);
+  window.removeEventListener('online', onVisibilityOrFocus);
+  document.removeEventListener('visibilitychange', onVisibilityOrFocus);
 });
 </script>
 
@@ -79,14 +109,16 @@ onUnmounted(() => {
         :key="section._id"
         :section="section"
         @open-card="openCard"
+        @open-import="openImport"
       />
     </div>
   </div>
   <div class="dashboard-loading" v-else>
     <i class="fas fa-spinner fa-spin"></i> Loading...
   </div>
-  <MobileNav :hiddenSlugs="hiddenSlugs" @toggle="toggleSection" />
+  <MobileNav :hiddenSlugs="hiddenSlugs" @toggle="toggleSection" @open-import="openImport" />
   <TaskEditModal :card="editingCard" @close="editingCard = null" />
+  <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />
 </template>
 
 <style scoped>
@@ -132,6 +164,19 @@ onUnmounted(() => {
 
 /* Responsive: mobile stacks vertically */
 @media (max-width: 768px) {
+  .app-shell {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .dashboard {
+    flex-direction: column;
+    overflow: visible;
+    padding-bottom: var(--gap-main);
+  }
+}
+
+@media (min-width: 769px) and (orientation: portrait) {
   .app-shell {
     height: auto;
     min-height: 100vh;

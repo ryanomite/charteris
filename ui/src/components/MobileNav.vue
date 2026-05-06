@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import type { ISection, IList } from '../types';
 
 const props = defineProps<{ hiddenSlugs: Set<string> }>();
-const emit = defineEmits<{ (e: 'toggle', slug: string): void }>();
+const emit = defineEmits<{
+  (e: 'toggle', slug: string): void;
+  (e: 'openImport', payload?: { listId?: string }): void;
+}>();
 
 const store = useTaskStore();
 const sections = computed(() => {
-  return store.sortedSections.filter(s => {
+  return store.sortedSections.filter((s: ISection) => {
     if (s.slug !== 'inbox') return true;
     const inboxLists = store.listsForSection(s._id);
-    const draftList = inboxLists.find(l => l.name === 'Draft');
+    const draftList = inboxLists.find((l: IList) => l.name === 'Draft');
     return draftList ? store.cardsForList(draftList._id).length > 0 : false;
   });
 });
@@ -30,6 +34,15 @@ async function archiveAllCompleted() {
   if (!confirm('Archive all completed tasks?')) return;
   await store.archiveAllCompleted();
 }
+
+function displaySectionName(name: string, slug: string) {
+  return slug === 'planning' ? 'Counter' : name;
+}
+
+function openGlobalImport() {
+  closeSettings();
+  emit('openImport');
+}
 </script>
 
 <template>
@@ -39,7 +52,7 @@ async function archiveAllCompleted() {
       :key="section._id"
       :class="['section-nav__btn', { 'section-nav__btn--hidden': hiddenSlugs.has(section.slug) }]"
       @click="emit('toggle', section.slug)"
-      :title="hiddenSlugs.has(section.slug) ? `Show ${section.name}` : `Hide ${section.name}`"
+      :title="hiddenSlugs.has(section.slug) ? `Show ${displaySectionName(section.name, section.slug)}` : `Hide ${displaySectionName(section.name, section.slug)}`"
     >
       <i :class="['fas', section.icon || 'fa-folder']"></i>
     </button>
@@ -80,6 +93,12 @@ async function archiveAllCompleted() {
           <button role="menuitem" class="settings-dropdown__item" @click="archiveAllCompleted">
             <i class="fas fa-archive"></i>
             Archive completed tasks
+          </button>
+        </li>
+        <li role="none">
+          <button role="menuitem" class="settings-dropdown__item" @click="openGlobalImport">
+            <i class="fas fa-file-import"></i>
+            Import tasks
           </button>
         </li>
       </ul>

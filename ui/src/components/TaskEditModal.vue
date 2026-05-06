@@ -2,6 +2,8 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { computeNextDueDate, handleRecurringCompletion } from '../composables/useRecurrence';
+import { parseTaskMacros } from '../utils/taskMacros';
+import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
 import api from '../services/api';
 import type { ICard, ITask, ILabel, ISubtask } from '../types';
 
@@ -17,7 +19,7 @@ const task = computed(() =>
 // Local editing state (copies of the task fields)
 const title = ref('');
 const description = ref('');
-const priority = ref<1 | 2 | 3 | 4 | null>(null);
+const priority = ref<1 | 2 | 3 | 4 | 5 | null>(null);
 const dueDate = ref('');
 const recurrence = ref('');
 const subtasks = ref<ISubtask[]>([]);
@@ -110,24 +112,55 @@ function removeSubtask(idx: number) {
 async function save() {
   if (!task.value) return;
   try {
+    const parsed = parseTaskMacros(title.value);
+    const finalTitle = parsed.title || title.value.trim();
+
+    const macroLabelIds = await resolveLabelIds(store, parsed.labelNames);
+    const mergedLabels = [...new Set([...taskLabels.value, ...macroLabelIds])];
+
     // If recurrence changed and is non-empty, auto-compute due date
-    let finalDueDate = dueDate.value || null;
+    let finalDueDate = parsed.dueDate || dueDate.value || null;
     if (recurrence.value && recurrence.value !== task.value.recurrence) {
       const computed = computeNextDueDate(recurrence.value);
       if (computed) finalDueDate = computed;
     }
 
     const payload: Partial<ITask> = {
-      title: title.value,
+      title: finalTitle,
       description: description.value,
-      priority: priority.value,
+      priority: parsed.priority ?? priority.value,
       dueDate: finalDueDate,
       recurrence: recurrence.value,
       subtasks: subtasks.value,
-      labels: taskLabels.value,
+      labels: mergedLabels,
     };
     const { data } = await api.put(`/tasks/${task.value._id}`, payload);
     store.upsertTask(data);
+
+    const currentList = props.card ? store.lists.find(l => l._id === props.card!.listId) : null;
+    const currentSection = currentList
+      ? store.sections.find(s => s._id === currentList.sectionId)
+      : null;
+
+    if (parsed.targetListName) {
+      const cabinetList = await ensureCabinetList(store, parsed.targetListName);
+      if (cabinetList) {
+        if (currentSection?.slug === 'board' && props.card && props.card.listId !== cabinetList._id) {
+          await api.patch(`/cards/${props.card._id}/move`, { targetListId: cabinetList._id });
+          await store.refreshListCards([props.card.listId, cabinetList._id]);
+        } else {
+          await addCardIfMissing(store, task.value._id, cabinetList._id);
+        }
+      }
+    }
+
+    if (parsed.addToToday) {
+      const todayList = findTodayList(store);
+      if (todayList) {
+        await addCardIfMissing(store, task.value._id, todayList._id);
+      }
+    }
+
     emit('close');
   } catch (err) {
     console.error('Save failed:', err);
@@ -221,14 +254,14 @@ function onOverlayClick(e: MouseEvent) {
             <label class="modal__label">Priority</label>
             <div class="modal__priority">
               <button
-                v-for="p in [1, 2, 3, 4]"
+                v-for="p in [1, 2, 3, 4, 5]"
                 :key="p"
                 class="priority-btn"
                 :class="{ 'priority-btn--active': priority === p }"
                 :style="{ '--pc': `var(--priority-${p})` }"
-                @click="priority = priority === p ? null : (p as 1 | 2 | 3 | 4)"
+                @click="priority = priority === p ? null : (p as 1 | 2 | 3 | 4 | 5)"
               >
-                {{ p }}
+                {{ p === 5 ? 'R' : p }}
               </button>
             </div>
           </div>

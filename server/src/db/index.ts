@@ -60,7 +60,7 @@ function createTables(): void {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
-      priority INTEGER CHECK(priority IS NULL OR (priority >= 1 AND priority <= 4)),
+      priority INTEGER CHECK(priority IS NULL OR (priority >= 1 AND priority <= 5)),
       dueDate TEXT,
       recurrence TEXT NOT NULL DEFAULT '',
       completed INTEGER NOT NULL DEFAULT 0,
@@ -118,6 +118,46 @@ function runMigrations(): void {
   if (!cols.includes('archived')) {
     db.exec('ALTER TABLE lists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
   }
+
+  // Expand tasks.priority constraint to allow value 5.
+  const taskTableSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tasks'")
+    .get() as { sql?: string } | undefined;
+  if (taskTableSql?.sql?.includes('priority <= 4')) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN TRANSACTION');
+    db.exec(`
+      CREATE TABLE tasks_new (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        priority INTEGER CHECK(priority IS NULL OR (priority >= 1 AND priority <= 5)),
+        dueDate TEXT,
+        recurrence TEXT NOT NULL DEFAULT '',
+        completed INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        master INTEGER NOT NULL DEFAULT 0,
+        parentId TEXT REFERENCES tasks_new(id),
+        createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+        updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    db.exec(`
+      INSERT INTO tasks_new (id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, createdAt, updatedAt)
+      SELECT id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, createdAt, updatedAt
+      FROM tasks
+    `);
+    db.exec('DROP TABLE tasks');
+    db.exec('ALTER TABLE tasks_new RENAME TO tasks');
+    db.exec('COMMIT');
+    db.exec('PRAGMA foreign_keys = ON');
+
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_parentId ON tasks(parentId)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_master ON tasks(master, recurrence, archived)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_dueDate ON tasks(dueDate)');
+  }
+
   // Rename sections: Planning → Briefing, Board → Cabinet
   const planningRow = db.prepare("SELECT name FROM sections WHERE slug = 'planning'").get() as any;
   if (planningRow && planningRow.name === 'Planning') {

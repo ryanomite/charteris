@@ -57,9 +57,14 @@ export const useTaskStore = defineStore('tasks', () => {
         const compA = taskA?.completed ? 1 : 0;
         const compB = taskB?.completed ? 1 : 0;
         if (compA !== compB) return compA - compB;
-        // Then by priority (null = lowest)
-        const pA = taskA?.priority ?? 99;
-        const pB = taskB?.priority ?? 99;
+        // Then by priority (1..4 first, then null, then 5 as rainy-day lowest)
+        const rank = (p: number | null | undefined) => {
+          if (p == null) return 50;
+          if (p === 5) return 60;
+          return p;
+        };
+        const pA = rank(taskA?.priority);
+        const pB = rank(taskB?.priority);
         if (pA !== pB) return pA - pB;
         return a.order - b.order;
       });

@@ -4,10 +4,13 @@ import { useTaskStore } from '../stores/taskStore';
 import { useSelection } from '../composables/useSelection';
 import VerticalList from './VerticalList.vue';
 import api from '../services/api';
-import type { ISection, ICard } from '../types';
+import type { ISection, ICard, IList } from '../types';
 
 const props = defineProps<{ section: ISection }>();
-const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
+const emit = defineEmits<{
+  (e: 'openCard', card: ICard): void;
+  (e: 'openImport', payload?: { listId?: string }): void;
+}>();
 const store = useTaskStore();
 const { clearSelection } = useSelection();
 
@@ -24,6 +27,7 @@ const bgVar = computed(() => {
 });
 
 const sectionClass = computed(() => `section section--${props.section.slug}`);
+const displaySectionName = computed(() => (props.section.slug === 'planning' ? 'Counter' : props.section.name));
 
 function toggleMenu() {
   menuOpen.value = !menuOpen.value;
@@ -47,15 +51,15 @@ async function addList() {
 
 async function moveAllToList(fromName: string, toName: string) {
   closeMenu();
-  const fromList = sectionLists.value.find(l => l.name === fromName);
-  const toList = sectionLists.value.find(l => l.name === toName);
+  const fromList = sectionLists.value.find((l: IList) => l.name === fromName);
+  const toList = sectionLists.value.find((l: IList) => l.name === toName);
   if (!fromList || !toList) return;
 
   const cards = store.cardsForList(fromList._id);
   const BATCH = 5;
   for (let i = 0; i < cards.length; i += BATCH) {
     const batch = cards.slice(i, i + BATCH);
-    await Promise.all(batch.map((card, idx) =>
+    await Promise.all(batch.map((card: ICard, idx: number) =>
       api.patch(`/cards/${card._id}/move`, {
         targetListId: toList._id,
         order: store.cardsForList(toList._id).length + idx,
@@ -89,7 +93,7 @@ async function cast() {
     <div class="section__header">
       <div class="section__title">
         <i :class="['fas', section.icon]"></i>
-        <span>{{ section.name }}</span>
+        <span>{{ displaySectionName }}</span>
       </div>
       <div class="section__actions">
         <!-- Briefing: Adjourn button -->
@@ -122,7 +126,7 @@ async function cast() {
           class="section__menu"
           :aria-expanded="menuOpen"
           aria-haspopup="menu"
-          :title="`${section.name} menu`"
+          :title="`${displaySectionName} menu`"
           @click="toggleMenu"
         >
           <i class="fas fa-ellipsis-h"></i>
@@ -161,6 +165,7 @@ async function cast() {
         :list="list"
         :section="section"
         @open-card="(c: ICard) => emit('openCard', c)"
+        @open-import="(payload?: { listId?: string }) => emit('openImport', payload)"
       />
     </div>
   </section>

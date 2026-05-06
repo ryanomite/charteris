@@ -3,12 +3,17 @@ import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
+import { parseTaskMacros } from '../utils/taskMacros';
+import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
 import api from '../services/api';
 import TaskCard from './TaskCard.vue';
 import type { IList, ISection, ICard } from '../types';
 
 const props = defineProps<{ list: IList; section: ISection }>();
-const emit = defineEmits<{ (e: 'openCard', card: ICard): void }>();
+const emit = defineEmits<{
+  (e: 'openCard', card: ICard): void;
+  (e: 'openImport', payload?: { listId?: string }): void;
+}>();
 const store = useTaskStore();
 const { canDrop, onDrop } = useDragDrop();
 
@@ -88,41 +93,6 @@ function editLastCreated() {
   }
 }
 
-function parseShortcuts(raw: string) {
-  let priority: number | null = null;
-  const labelNames: string[] = [];
-  let addToToday = false;
-
-  // Match standalone ! (not preceded by a non-whitespace char)
-  // At start of string or preceded by whitespace
-  const bangRe = /(?:^|(?<=\s))!(?=\s|$)/g;
-  if (bangRe.test(raw)) {
-    addToToday = true;
-    raw = raw.replace(/(?:^|(?<=\s))!(?=\s|$)/g, ' ');
-  }
-
-  // Match p1, p2, p3, p4 as standalone tokens
-  const prioRe = /(?:^|(?<=\s))p([1-4])(?=\s|$)/gi;
-  const prioMatch = prioRe.exec(raw);
-  if (prioMatch) {
-    priority = parseInt(prioMatch[1], 10);
-    raw = raw.replace(/(?:^|(?<=\s))p[1-4](?=\s|$)/gi, ' ');
-  }
-
-  // Match @label tokens
-  const labelRe = /(?:^|(?<=\s))@(\S+)/g;
-  let lm;
-  while ((lm = labelRe.exec(raw)) !== null) {
-    labelNames.push(lm[1].toLowerCase());
-  }
-  if (labelNames.length) {
-    raw = raw.replace(/(?:^|(?<=\s))@\S+/g, ' ');
-  }
-
-  const title = raw.replace(/\s+/g, ' ').trim();
-  return { title, priority, labelNames, addToToday };
-}
-
 async function submitNewCard() {
   const rawInput = newTitle.value.trim();
   if (!rawInput) {
@@ -130,44 +100,40 @@ async function submitNewCard() {
     return;
   }
   try {
-    const { title, priority, labelNames, addToToday } = parseShortcuts(rawInput);
+    const { title, priority, labelNames, addToToday, dueDate, targetListName } = parseTaskMacros(rawInput);
     if (!title) {
       cancelAdding();
       return;
     }
 
-    // Resolve label names to IDs, creating any that don't exist
-    const labelIds: string[] = [];
-    for (const name of labelNames) {
-      let label = store.labels.find(l => l.name.toLowerCase() === name);
-      if (!label) {
-        const { data } = await api.post('/labels', { name });
-        store.upsertLabel(data);
-        label = data;
-      }
-      labelIds.push(label!._id);
+    const labelIds = await resolveLabelIds(store, labelNames);
+
+    const todayList = findTodayList(store);
+    const targetCabinetList = targetListName ? await ensureCabinetList(store, targetListName) : null;
+
+    let primaryListId = props.list._id;
+    if (targetCabinetList && props.section.slug !== 'planning') {
+      primaryListId = targetCabinetList._id;
     }
 
     const taskPayload: Record<string, unknown> = { title };
     if (priority !== null) taskPayload.priority = priority;
     if (labelIds.length) taskPayload.labels = labelIds;
+    if (dueDate) taskPayload.dueDate = dueDate;
 
     const { data: task } = await api.post('/tasks', taskPayload);
     store.upsertTask(task);
-    const { data: card } = await api.post('/cards', { taskId: task._id, listId: props.list._id });
+    const { data: card } = await api.post('/cards', { taskId: task._id, listId: primaryListId });
     store.upsertCard(card);
     lastCreatedCardId.value = card._id;
 
+    if (targetCabinetList && props.section.slug === 'planning') {
+      await addCardIfMissing(store, task._id, targetCabinetList._id);
+    }
+
     // If ! shortcut used, also add card to Today list (if not already in a planning list)
-    if (addToToday) {
-      const planningSection = store.sections.find(s => s.slug === 'planning');
-      if (planningSection) {
-        const todayList = store.listsForSection(planningSection._id).find(l => l.name === 'Today');
-        if (todayList && todayList._id !== props.list._id) {
-          const { data: todayCard } = await api.post('/cards', { taskId: task._id, listId: todayList._id });
-          store.upsertCard(todayCard);
-        }
-      }
+    if (addToToday && todayList && todayList._id !== primaryListId) {
+      await addCardIfMissing(store, task._id, todayList._id);
     }
 
     newTitle.value = '';
@@ -326,6 +292,11 @@ async function moveListRight() {
     console.error('Move list right failed:', err);
   }
 }
+
+function openImportForList() {
+  closeMenu();
+  emit('openImport', { listId: props.list._id });
+}
 </script>
 
 <template>
@@ -387,6 +358,12 @@ async function moveListRight() {
             <button role="menuitem" class="dropdown__item" @click="archiveAllTasks">
               <i class="fas fa-archive"></i>
               Archive all tasks
+            </button>
+          </li>
+          <li role="none">
+            <button role="menuitem" class="dropdown__item" @click="openImportForList">
+              <i class="fas fa-file-import"></i>
+              Import tasks
             </button>
           </li>
           <li v-if="!list.isFixed" role="none">

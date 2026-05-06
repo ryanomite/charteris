@@ -24,7 +24,7 @@ export interface ITask {
   _id: string;
   title: string;
   description: string;
-  priority: 1 | 2 | 3 | 4 | null;
+  priority: 1 | 2 | 3 | 4 | 5 | null;
   labels: string[];
   dueDate: string | null;
   recurrence: string;

@@ -6,6 +6,10 @@ export function tokenAuth(req: Request, res: Response, next: NextFunction): void
     return next();
   }
 
+  if (req.path.startsWith('/public/today/')) {
+    return next();
+  }
+
   const token = req.query.token as string | undefined;
 
   if (!config.apiToken) {

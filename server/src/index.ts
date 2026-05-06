@@ -21,6 +21,7 @@ import labelRoutes from './routes/labels';
 import adminRoutes from './routes/admin';
 import dashboardRoutes from './routes/dashboard';
 import importRoutes from './routes/import';
+import publicRoutes from './routes/public';
 
 const app = express();
 const server = createServer(app);
@@ -53,6 +54,7 @@ app.use('/api/v1/labels', labelRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/import', importRoutes);
+app.use('/api/v1/public', publicRoutes);
 
 // MCP server — Streamable HTTP transport at /mcp (token-protected)
 const mcpSessions = new Map<string, { server: ReturnType<typeof createMcpServer>; transport: StreamableHTTPServerTransport }>();

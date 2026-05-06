@@ -27,8 +27,19 @@ const priorityColor = computed(() => {
     2: 'var(--priority-2)',
     3: 'var(--priority-3)',
     4: 'var(--priority-4)',
+    5: 'var(--priority-5)',
   };
   return map[p] || 'transparent';
+});
+
+const isCommittedInPlanning = computed(() => {
+  if (props.sectionSlug !== 'board') return false;
+  const planning = store.sections.find(s => s.slug === 'planning');
+  if (!planning) return false;
+  const planningListIds = store.lists
+    .filter(l => l.sectionId === planning._id && !l.archived)
+    .map(l => l._id);
+  return store.cards.some(c => c.taskId === props.card.taskId && planningListIds.includes(c.listId));
 });
 
 const dueStatus = computed(() => {
@@ -152,6 +163,7 @@ async function onActionClick(e: MouseEvent) {
       'card--overdue': dueStatus === 'overdue',
       'card--due-today': dueStatus === 'due-today',
       'card--due-tomorrow': dueStatus === 'due-tomorrow',
+      'card--board-committed': isCommittedInPlanning,
     }"
     :style="{ borderLeftColor: priorityColor }"
     v-if="task"
@@ -188,7 +200,7 @@ async function onActionClick(e: MouseEvent) {
     <div v-if="actionArrow" class="card__hover-right">
       <button
         class="card__action"
-        :title="actionArrow === 'left' ? 'Add to Today' : 'Remove from Briefing'"
+        :title="actionArrow === 'left' ? 'Add to Today' : 'Remove from Counter'"
         @click="onActionClick"
       >
         <i :class="['fas', actionArrow === 'left' ? 'fa-arrow-left' : 'fa-arrow-right']"></i>
@@ -239,6 +251,15 @@ async function onActionClick(e: MouseEvent) {
 
 .card--focused {
   box-shadow: 0 0 0 1px var(--accent, #457B9D);
+}
+
+.card--board-committed {
+  background: #000;
+  box-shadow: inset 0 0 0 1px var(--bg-card);
+}
+
+.card--board-committed:hover {
+  background: #000;
 }
 
 .card__tags {
