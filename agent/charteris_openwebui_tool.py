@@ -50,8 +50,8 @@ class Tools:
         resp.raise_for_status()
         return resp.json()
 
-    def _patch(self, path: str, body: dict) -> dict:
-        resp = requests.patch(
+    def _put(self, path: str, body: dict) -> dict:
+        resp = requests.put(
             f"{self.valves.base_url}/api/v1{path}",
             json=body,
             params=self._with_token(),
@@ -260,7 +260,7 @@ class Tools:
         if not body:
             return "No fields to update"
         try:
-            task = self._patch(f"/tasks/{task_id}", body)
+            task = self._put(f"/tasks/{task_id}", body)
             return json.dumps(task, indent=2)
         except requests.HTTPError as e:
             return f"Error: {e}"
@@ -273,7 +273,7 @@ class Tools:
             task_id: The task's _id hex string.
         """
         try:
-            task = self._patch(f"/tasks/{task_id}", {"completed": True})
+            task = self._put(f"/tasks/{task_id}", {"completed": True})
             return f"Task '{task.get('title')}' marked as completed."
         except requests.HTTPError as e:
             return f"Error: {e}"
@@ -286,7 +286,7 @@ class Tools:
             task_id: The task's _id hex string.
         """
         try:
-            task = self._patch(f"/tasks/{task_id}", {"completed": False})
+            task = self._put(f"/tasks/{task_id}", {"completed": False})
             return f"Task '{task.get('title')}' reopened."
         except requests.HTTPError as e:
             return f"Error: {e}"
