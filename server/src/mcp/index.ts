@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
-  findAllSections, findSectionById,
+  findAllSections, findSectionById, findSectionBySlug,
 } from '../queries/sections';
 import {
   findAllLists, findListById, insertList, maxListOrder,
@@ -55,7 +55,7 @@ export function createMcpServer(): McpServer {
   server.tool('create_task', 'Create a new task', {
     title: z.string(),
     description: z.string().optional(),
-    priority: z.number().min(1).max(4).optional(),
+    priority: z.number().min(1).max(5).optional(),
     labels: z.array(z.string()).optional(),
     dueDate: z.string().optional(),
     recurrence: z.string().optional(),
@@ -75,7 +75,7 @@ export function createMcpServer(): McpServer {
     taskId: z.string(),
     title: z.string().optional(),
     description: z.string().optional(),
-    priority: z.number().min(1).max(4).optional(),
+    priority: z.number().min(1).max(5).optional(),
     labels: z.array(z.string()).optional(),
     dueDate: z.string().nullable().optional(),
     recurrence: z.string().optional(),
@@ -180,6 +180,74 @@ export function createMcpServer(): McpServer {
   }, async (args) => {
     const lists = findAllLists(args.sectionId ? { sectionId: args.sectionId } : undefined);
     return { content: [{ type: 'text' as const, text: JSON.stringify(lists, null, 2) }] };
+  });
+
+  // --- Convenience tools ---
+
+  server.tool('get_today_tasks', 'Get all incomplete tasks in the Today list, with full task details', {}, async () => {
+    const planning = findSectionBySlug('planning');
+    if (!planning) return { content: [{ type: 'text' as const, text: '[]' }] };
+    const todayList = findAllLists({ sectionId: planning._id })
+      .find(l => l.name.toLowerCase() === 'today');
+    if (!todayList) return { content: [{ type: 'text' as const, text: '[]' }] };
+    const cards = findAllCards({ listId: todayList._id });
+    const tasks = cards
+      .map(c => findTaskById(c.taskId))
+      .filter((t): t is NonNullable<ReturnType<typeof findTaskById>> => Boolean(t))
+      .filter(t => !t.completed && !t.archived);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(tasks, null, 2) }] };
+  });
+
+  server.tool('get_tasks_in_list', 'Get all tasks in a list by list name (case-insensitive), with full task details', {
+    listName: z.string(),
+    includeCompleted: z.boolean().optional(),
+  }, async (args) => {
+    const allLists = findAllLists();
+    const list = allLists.find(l => l.name.toLowerCase() === args.listName.toLowerCase());
+    if (!list) return { content: [{ type: 'text' as const, text: `List "${args.listName}" not found` }], isError: true };
+    const cards = findAllCards({ listId: list._id });
+    const tasks = cards
+      .map(c => findTaskById(c.taskId))
+      .filter((t): t is NonNullable<ReturnType<typeof findTaskById>> => Boolean(t))
+      .filter(t => args.includeCompleted ? true : !t.completed)
+      .filter(t => !t.archived);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(tasks, null, 2) }] };
+  });
+
+  server.tool('add_task_to_list', 'Create a task and add it to a list by name (creates Cabinet list if not found). Returns the created task.', {
+    title: z.string(),
+    listName: z.string(),
+    description: z.string().optional(),
+    priority: z.number().min(1).max(5).optional(),
+    dueDate: z.string().optional(),
+    addToToday: z.boolean().optional().describe('Also add a card in the Today list'),
+  }, async (args) => {
+    const allLists = findAllLists();
+    let list = allLists.find(l => l.name.toLowerCase() === args.listName.toLowerCase());
+    if (!list) {
+      const board = findSectionBySlug('board');
+      if (!board) return { content: [{ type: 'text' as const, text: 'Board section not found' }], isError: true };
+      const order = maxListOrder(board._id) + 1;
+      list = insertList({ name: args.listName, sectionId: board._id, order, isFixed: false });
+    }
+    const task = insertTask({
+      title: args.title,
+      description: args.description || '',
+      priority: args.priority || null,
+      labels: [],
+      dueDate: args.dueDate || null,
+      recurrence: '',
+    });
+    insertCard({ taskId: task._id, listId: list._id });
+    if (args.addToToday) {
+      const planning = findSectionBySlug('planning');
+      if (planning) {
+        const todayList = findAllLists({ sectionId: planning._id })
+          .find(l => l.name.toLowerCase() === 'today');
+        if (todayList) insertCard({ taskId: task._id, listId: todayList._id });
+      }
+    }
+    return { content: [{ type: 'text' as const, text: JSON.stringify(task, null, 2) }] };
   });
 
   server.tool('create_list', 'Create a new list in the Board section', {
