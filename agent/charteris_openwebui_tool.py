@@ -25,11 +25,16 @@ class Tools:
     def __init__(self):
         self.valves = self.Valves()
 
+    def _with_token(self, params: dict | None = None) -> dict:
+        merged = dict(params or {})
+        if self.valves.api_token:
+            merged["token"] = self.valves.api_token
+        return merged
+
     def _get(self, path: str, params: dict = None) -> dict | list:
         resp = requests.get(
             f"{self.valves.base_url}/api/v1{path}",
-            params=params,
-            headers={"Authorization": f"Bearer {self.valves.api_token}"},
+            params=self._with_token(params),
             timeout=10,
         )
         resp.raise_for_status()
@@ -39,7 +44,7 @@ class Tools:
         resp = requests.post(
             f"{self.valves.base_url}/api/v1{path}",
             json=body,
-            headers={"Authorization": f"Bearer {self.valves.api_token}"},
+            params=self._with_token(),
             timeout=10,
         )
         resp.raise_for_status()
@@ -49,7 +54,7 @@ class Tools:
         resp = requests.patch(
             f"{self.valves.base_url}/api/v1{path}",
             json=body,
-            headers={"Authorization": f"Bearer {self.valves.api_token}"},
+            params=self._with_token(),
             timeout=10,
         )
         resp.raise_for_status()
