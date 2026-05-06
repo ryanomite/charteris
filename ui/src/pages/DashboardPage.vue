@@ -179,7 +179,7 @@ onUnmounted(() => {
 @media (min-width: 769px) and (orientation: portrait) {
   .app-shell {
     height: auto;
-    min-height: 100vh;
+    overflow-y: auto;
   }
 
   .dashboard {

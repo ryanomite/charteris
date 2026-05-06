@@ -254,12 +254,12 @@ async function onActionClick(e: MouseEvent) {
 }
 
 .card--board-committed {
-  background: #000;
-  box-shadow: inset 0 0 0 1px var(--bg-card);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .card--board-committed:hover {
-  background: #000;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .card__tags {

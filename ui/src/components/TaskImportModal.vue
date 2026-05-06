@@ -184,6 +184,39 @@ async function doImport() {
             placeholder='{"title":"Pay rent p1 @Home Tomorrow"}'
           ></textarea>
 
+          <details class="modal__examples">
+            <summary>JSON format examples</summary>
+            <p class="modal__hint">You can pass these examples to an AI to generate import data:</p>
+            <pre class="modal__example-code">// Minimal
+{ "title": "Buy groceries" }
+
+// With macros in title
+{ "title": "Book dentist !p2 @Health Friday" }
+
+// Full object
+{
+  "title": "Quarterly report",
+  "description": "Export from Notion and format",
+  "priority": 1,
+  "labels": ["Work", "Admin"],
+  "dueDate": "2026-06-01",
+  "recurrence": "monthly",
+  "completed": false,
+  "archived": false,
+  "master": false,
+  "subtasks": [
+    { "title": "Export data", "completed": false },
+    { "title": "Write summary", "completed": false }
+  ]
+}
+
+// Array of tasks
+[
+  { "title": "Call bank", "priority": 2, "labels": ["Finance"] },
+  { "title": "Renew passport", "dueDate": "2026-09-15", "labels": ["Admin"] }
+]</pre>
+          </details>
+
           <p v-if="error" class="modal__error">{{ error }}</p>
           <p v-if="stats.created || stats.failed" class="modal__stats">
             Created {{ stats.created }} · Failed {{ stats.failed }}
@@ -276,6 +309,36 @@ async function doImport() {
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.85rem;
+}
+
+.modal__examples {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.modal__examples summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.modal__examples summary:hover {
+  color: var(--text-primary);
+}
+
+.modal__example-code {
+  margin: 10px 0 4px;
+  padding: 10px;
+  background: #111;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .modal__footer {
