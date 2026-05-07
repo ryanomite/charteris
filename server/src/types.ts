@@ -59,3 +59,9 @@ export interface Label {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface GlobalSettings {
+  hideCommittedCards: boolean;
+  castingRulesToday: string;
+  castingRulesNext: string;
+}

@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '../services/api';
-import type { ISection, IList, ITask, ICard, ILabel } from '../types';
+import type { ISection, IList, ITask, ICard, ILabel, IGlobalSettings } from '../types';
+
+const DEFAULT_GLOBAL_SETTINGS: IGlobalSettings = {
+  hideCommittedCards: false,
+  castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
+  castingRulesNext: 'isDueTomorrow()',
+};
 
 export const useTaskStore = defineStore('tasks', () => {
   const sections = ref<ISection[]>([]);
@@ -9,6 +15,7 @@ export const useTaskStore = defineStore('tasks', () => {
   const tasks = ref<ITask[]>([]);
   const cards = ref<ICard[]>([]);
   const labels = ref<ILabel[]>([]);
+  const globalSettings = ref<IGlobalSettings>({ ...DEFAULT_GLOBAL_SETTINGS });
   const loading = ref(false);
   const showArchived = ref(false);
   const showArchivedLists = ref(false);
@@ -23,9 +30,34 @@ export const useTaskStore = defineStore('tasks', () => {
       tasks.value = data.tasks;
       cards.value = data.cards;
       labels.value = data.labels;
+      globalSettings.value = data.settings || { ...DEFAULT_GLOBAL_SETTINGS };
     } finally {
       loading.value = false;
     }
+  }
+
+  async function fetchGlobalSettings() {
+    const { data } = await api.get('/settings');
+    globalSettings.value = data;
+  }
+
+  async function updateGlobalSettings(patch: Partial<IGlobalSettings>) {
+    const { data } = await api.put('/settings', patch);
+    globalSettings.value = data;
+  }
+
+  function applyGlobalSettings(settings: IGlobalSettings) {
+    globalSettings.value = settings;
+  }
+
+  function isTaskCommitted(taskId: string): boolean {
+    const planningSection = sections.value.find(s => s.slug === 'planning');
+    if (!planningSection) return false;
+    const planningListIds = lists.value
+      .filter(l => l.sectionId === planningSection._id && ['Today', 'Next'].includes(l.name) && !l.archived)
+      .map(l => l._id);
+    if (!planningListIds.length) return false;
+    return cards.value.some(c => c.taskId === taskId && planningListIds.includes(c.listId));
   }
 
   // Computed: sections in display order
@@ -48,6 +80,11 @@ export const useTaskStore = defineStore('tasks', () => {
         const task = tasks.value.find(t => t._id === c.taskId);
         if (!task) return false;
         if (task.archived && !showArchived.value) return false;
+        if (globalSettings.value.hideCommittedCards) {
+          const list = lists.value.find(l => l._id === c.listId);
+          const section = list ? sections.value.find(s => s._id === list.sectionId) : null;
+          if (section?.slug === 'board' && isTaskCommitted(c.taskId)) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -165,9 +202,11 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   return {
-    sections, lists, tasks, cards, labels, loading, showArchived, showArchivedLists,
+    sections, lists, tasks, cards, labels, globalSettings, loading, showArchived, showArchivedLists,
     sortedSections, fetchDashboard,
+    fetchGlobalSettings, updateGlobalSettings, applyGlobalSettings,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
+    isTaskCommitted,
     upsertTask, removeTask,
     upsertCard, removeCard,
     upsertList, removeList,

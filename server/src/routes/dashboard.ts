@@ -4,6 +4,7 @@ import { findAllLists } from '../queries/lists';
 import { findAllTasks } from '../queries/tasks';
 import { findAllCards } from '../queries/cards';
 import { findAllLabels } from '../queries/labels';
+import { findGlobalSettings, findGlobalSettingsUpdatedAt } from '../queries/settings';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ function computeDashboardVersion() {
   const tasks = findAllTasks();
   const cards = findAllCards();
   const labels = findAllLabels();
+  const settingsUpdatedAt = findGlobalSettingsUpdatedAt();
 
   const latestMs = Math.max(
     ...sections.map(s => toMillis(s.updatedAt || s.createdAt)),
@@ -26,6 +28,7 @@ function computeDashboardVersion() {
     ...tasks.map(t => toMillis(t.updatedAt || t.createdAt)),
     ...cards.map(c => toMillis(c.updatedAt || c.createdAt)),
     ...labels.map(l => toMillis(l.updatedAt || l.createdAt)),
+    toMillis(settingsUpdatedAt || undefined),
     0,
   );
 
@@ -41,8 +44,9 @@ router.get('/', (_req: Request, res: Response) => {
   const tasks = findAllTasks();
   const cards = findAllCards();
   const labels = findAllLabels();
+  const settings = findGlobalSettings();
 
-  res.json({ sections, lists, tasks, cards, labels });
+  res.json({ sections, lists, tasks, cards, labels, settings });
 });
 
 router.get('/version', (_req: Request, res: Response) => {

@@ -34,12 +34,7 @@ const priorityColor = computed(() => {
 
 const isCommittedInPlanning = computed(() => {
   if (props.sectionSlug !== 'board') return false;
-  const planning = store.sections.find(s => s.slug === 'planning');
-  if (!planning) return false;
-  const planningListIds = store.lists
-    .filter(l => l.sectionId === planning._id && !l.archived)
-    .map(l => l._id);
-  return store.cards.some(c => c.taskId === props.card.taskId && planningListIds.includes(c.listId));
+  return store.isTaskCommitted(props.card.taskId);
 });
 
 const dueStatus = computed(() => {

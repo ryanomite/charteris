@@ -49,12 +49,19 @@ export interface ILabel {
   name: string;
 }
 
+export interface IGlobalSettings {
+  hideCommittedCards: boolean;
+  castingRulesToday: string;
+  castingRulesNext: string;
+}
+
 export interface IDashboard {
   sections: ISection[];
   lists: IList[];
   tasks: ITask[];
   cards: ICard[];
   labels: ILabel[];
+  settings: IGlobalSettings;
 }
 
 export interface WSMessage {

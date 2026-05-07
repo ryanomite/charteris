@@ -227,31 +227,89 @@ paths:
 
   /sections/board/cast:
     post:
-      summary: Cast eligible tasks into Today
+      summary: Cast eligible tasks into Today/Next using global casting rules
       description: >
-        Finds all incomplete, unarchived tasks that are overdue, due today, or have
-        priority 1, and adds a card in the Today list for each one not already there.
+        Evaluates global casting rule expressions against each incomplete, unarchived
+        task and adds matching tasks into Today and Next lists.
       tags: [Sections]
       parameters:
         - $ref: "#/components/parameters/token"
       responses:
         "200":
-          description: Number of cards added and the Today list ID
+          description: IDs of affected lists and number of cards added
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  added:
+                  listIds:
+                    type: array
+                    items:
+                      type: string
+                  addedToday:
                     type: integer
-                  listId:
-                    type: string
+                  addedNext:
+                    type: integer
         "500":
-          description: Today list not found
+          description: Today or Next list not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  # --- Settings ---
+  /settings:
+    get:
+      summary: Get global settings
+      tags: [Settings]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Global settings object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hideCommittedCards:
+                    type: boolean
+                  castingRulesToday:
+                    type: string
+                  castingRulesNext:
+                    type: string
+    put:
+      summary: Update global settings
+      tags: [Settings]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hideCommittedCards:
+                  type: boolean
+                castingRulesToday:
+                  type: string
+                castingRulesNext:
+                  type: string
+      responses:
+        "200":
+          description: Updated global settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hideCommittedCards:
+                    type: boolean
+                  castingRulesToday:
+                    type: string
+                  castingRulesNext:
+                    type: string
 
   # --- Lists ---
   /lists:
@@ -1058,6 +1116,15 @@ paths:
                                   type: integer
                                 task:
                                   $ref: "#/components/schemas/Task"
+                    settings:
+                      type: object
+                      properties:
+                        hideCommittedCards:
+                          type: boolean
+                        castingRulesToday:
+                          type: string
+                        castingRulesNext:
+                          type: string
 
   /dashboard/version:
     get:

@@ -112,6 +112,10 @@ export function useWebSocket() {
         store.removeLabel(data._id);
         break;
 
+      case 'settings:updated':
+        store.applyGlobalSettings(data);
+        break;
+
       default:
         console.log('[WS] Unknown event:', event);
     }

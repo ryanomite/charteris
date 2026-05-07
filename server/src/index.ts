@@ -22,6 +22,7 @@ import adminRoutes from './routes/admin';
 import dashboardRoutes from './routes/dashboard';
 import importRoutes from './routes/import';
 import publicRoutes from './routes/public';
+import settingsRoutes from './routes/settings';
 
 const app = express();
 const server = createServer(app);
@@ -53,6 +54,7 @@ app.use('/api/v1/cards', cardRoutes);
 app.use('/api/v1/labels', labelRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/import', importRoutes);
 app.use('/api/v1/public', publicRoutes);
 

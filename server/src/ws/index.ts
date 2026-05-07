@@ -7,7 +7,8 @@ export type WSEventType =
   | 'task:created' | 'task:updated' | 'task:deleted'
   | 'card:created' | 'card:updated' | 'card:deleted' | 'card:moved' | 'card:reordered'
   | 'list:created' | 'list:updated' | 'list:deleted' | 'list:reordered'
-  | 'label:created' | 'label:updated' | 'label:deleted';
+  | 'label:created' | 'label:updated' | 'label:deleted'
+  | 'settings:updated';
 
 let wss: WebSocketServer;
 

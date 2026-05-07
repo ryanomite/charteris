@@ -9,6 +9,7 @@ import SectionPanel from '../components/SectionPanel.vue';
 import MobileNav from '../components/MobileNav.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
 import TaskImportModal from '../components/TaskImportModal.vue';
+import GlobalSettingsModal from '../components/GlobalSettingsModal.vue';
 import type { ICard } from '../types';
 
 const store = useTaskStore();
@@ -16,6 +17,7 @@ const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
 const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
+const globalSettingsOpen = ref(false);
 const lastDashboardVersion = ref<string | null>(null);
 
 function openCard(card: ICard) {
@@ -44,6 +46,14 @@ function openImport(payload?: { listId?: string }) {
 function closeImport() {
   importOpen.value = false;
   importTargetListId.value = null;
+}
+
+function openGlobalSettings() {
+  globalSettingsOpen.value = true;
+}
+
+function closeGlobalSettings() {
+  globalSettingsOpen.value = false;
 }
 
 useKeyboardShortcuts(openCard);
@@ -150,9 +160,15 @@ onUnmounted(() => {
   <div class="dashboard-loading" v-else>
     <i class="fas fa-spinner fa-spin"></i> Loading...
   </div>
-  <MobileNav :hiddenSlugs="hiddenSlugs" @toggle="toggleSection" @open-import="openImport" />
+  <MobileNav
+    :hiddenSlugs="hiddenSlugs"
+    @toggle="toggleSection"
+    @open-import="openImport"
+    @open-global-settings="openGlobalSettings"
+  />
   <TaskEditModal :card="editingCard" @close="editingCard = null" />
   <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />
+  <GlobalSettingsModal :open="globalSettingsOpen" @close="closeGlobalSettings" />
 </template>
 
 <style scoped>

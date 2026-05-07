@@ -7,6 +7,7 @@ const props = defineProps<{ hiddenSlugs: Set<string> }>();
 const emit = defineEmits<{
   (e: 'toggle', slug: string): void;
   (e: 'openImport', payload?: { listId?: string }): void;
+  (e: 'openGlobalSettings'): void;
 }>();
 
 const store = useTaskStore();
@@ -42,6 +43,16 @@ function displaySectionName(name: string, slug: string) {
 function openGlobalImport() {
   closeSettings();
   emit('openImport');
+}
+
+async function toggleHideCommittedCards() {
+  closeSettings();
+  await store.updateGlobalSettings({ hideCommittedCards: !store.globalSettings.hideCommittedCards });
+}
+
+function openGlobalSettings() {
+  closeSettings();
+  emit('openGlobalSettings');
 }
 </script>
 
@@ -87,6 +98,18 @@ function openGlobalImport() {
           >
             <i :class="['fas', store.showArchivedLists ? 'fa-eye-slash' : 'fa-eye']"></i>
             {{ store.showArchivedLists ? 'Hide archived lists' : 'Show archived lists' }}
+          </button>
+        </li>
+        <li role="none">
+          <button role="menuitem" class="settings-dropdown__item" @click="toggleHideCommittedCards">
+            <i :class="['fas', store.globalSettings.hideCommittedCards ? 'fa-eye-slash' : 'fa-eye']"></i>
+            {{ store.globalSettings.hideCommittedCards ? 'Show committed cards' : 'Hide committed cards' }}
+          </button>
+        </li>
+        <li role="none">
+          <button role="menuitem" class="settings-dropdown__item" @click="openGlobalSettings">
+            <i class="fas fa-sliders-h"></i>
+            Global settings
           </button>
         </li>
         <li role="none">
