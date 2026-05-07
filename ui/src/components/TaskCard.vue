@@ -5,6 +5,7 @@ import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { useSelection } from '../composables/useSelection';
 import { hoveredCardId } from '../composables/useHoveredList';
 import { handleRecurringCompletion } from '../composables/useRecurrence';
+import { toClassSlug } from '../utils/classNames';
 import api from '../services/api';
 import type { ICard } from '../types';
 
@@ -68,6 +69,21 @@ const taskLabels = computed(() => {
   return task.value.labels
     .map(id => store.labelById(id))
     .filter(Boolean);
+});
+
+const cardSemanticClasses = computed(() => {
+  const classNames: string[] = [];
+  for (const label of taskLabels.value) {
+    const slug = toClassSlug(label!.name);
+    classNames.push(`card-label-${slug}`, `label-${slug}`);
+  }
+
+  const currentList = store.lists.find(l => l._id === props.card.listId);
+  if (currentList) {
+    const slug = toClassSlug(currentList.name);
+    classNames.push(`card-list-${slug}`, `list-${slug}`);
+  }
+  return classNames;
 });
 
 // Determine action button: left arrow for Cabinet, right arrow for non-orphaned Briefing
@@ -149,17 +165,20 @@ async function onActionClick(e: MouseEvent) {
 <template>
   <div
     class="card"
-    :class="{
-      'card--complete': isComplete,
-      'card--archived': task?.archived,
-      'card--dragging': isDragging,
-      'card--selected': isSelected(card._id),
-      'card--focused': isFocused(card._id),
-      'card--overdue': dueStatus === 'overdue',
-      'card--due-today': dueStatus === 'due-today',
-      'card--due-tomorrow': dueStatus === 'due-tomorrow',
-      'card--board-committed': isCommittedInPlanning,
-    }"
+    :class="[
+      {
+        'card--complete': isComplete,
+        'card--archived': task?.archived,
+        'card--dragging': isDragging,
+        'card--selected': isSelected(card._id),
+        'card--focused': isFocused(card._id),
+        'card--overdue': dueStatus === 'overdue',
+        'card--due-today': dueStatus === 'due-today',
+        'card--due-tomorrow': dueStatus === 'due-tomorrow',
+        'card--board-committed': isCommittedInPlanning,
+      },
+      cardSemanticClasses,
+    ]"
     :style="{ borderLeftColor: priorityColor }"
     v-if="task"
     draggable="true"

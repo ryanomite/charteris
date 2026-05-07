@@ -7,6 +7,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   hideCommittedCards: false,
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
   castingRulesNext: 'isDueTomorrow()',
+  cssOverrides: '',
 };
 
 export function findGlobalSettings(): GlobalSettings {
@@ -25,6 +26,9 @@ export function findGlobalSettings(): GlobalSettings {
       castingRulesNext: typeof parsed.castingRulesNext === 'string' && parsed.castingRulesNext.trim()
         ? parsed.castingRulesNext
         : DEFAULT_GLOBAL_SETTINGS.castingRulesNext,
+      cssOverrides: typeof parsed.cssOverrides === 'string'
+        ? parsed.cssOverrides
+        : DEFAULT_GLOBAL_SETTINGS.cssOverrides,
     };
   } catch {
     return { ...DEFAULT_GLOBAL_SETTINGS };
@@ -37,6 +41,7 @@ export function updateGlobalSettings(patch: Partial<GlobalSettings>): GlobalSett
     hideCommittedCards: patch.hideCommittedCards ?? current.hideCommittedCards,
     castingRulesToday: patch.castingRulesToday?.trim() || current.castingRulesToday,
     castingRulesNext: patch.castingRulesNext?.trim() || current.castingRulesNext,
+    cssOverrides: patch.cssOverrides ?? current.cssOverrides,
   };
 
   getDb().prepare(`

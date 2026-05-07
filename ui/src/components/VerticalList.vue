@@ -5,6 +5,7 @@ import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
 import { parseTaskMacros } from '../utils/taskMacros';
 import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
+import { toClassSlug } from '../utils/classNames';
 import api from '../services/api';
 import TaskCard from './TaskCard.vue';
 import type { IList, ISection, ICard } from '../types';
@@ -18,6 +19,8 @@ const store = useTaskStore();
 const { canDrop, onDrop } = useDragDrop();
 
 const cards = computed(() => store.cardsForList(props.list._id));
+const activeCardCount = computed(() => store.activeCardCountForList(props.list._id));
+const listSemanticClass = computed(() => `list-${toClassSlug(props.list.name)}`);
 
 const dropIndex = ref(-1);
 const isOver = ref(false);
@@ -302,10 +305,13 @@ function openImportForList() {
 <template>
   <div
     class="list"
-    :class="{
-      'list--drag-over': isOver && droppable,
-      'list--archived': list.archived,
-    }"
+    :class="[
+      {
+        'list--drag-over': isOver && droppable,
+        'list--archived': list.archived,
+      },
+      listSemanticClass,
+    ]"
     @mouseenter="onMouseEnter"
     @mouseleave="onMouseLeave"
   >
@@ -325,6 +331,7 @@ function openImportForList() {
         :class="{ 'list__title--editable': !list.isFixed }"
         @click.stop="!list.isFixed && startRename()"
       >{{ list.name }}</span>
+      <span class="list__count">{{ activeCardCount }}</span>
       <div class="list__menu-wrap" @keydown.escape="closeMenu">
         <button
           class="list__menu"
@@ -457,6 +464,15 @@ function openImportForList() {
   font-size: 0.875rem;
   flex: 1;
   min-width: 0;
+}
+
+.list__count {
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-right: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.9;
 }
 
 .list__title--editable {

@@ -9,7 +9,7 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 router.put('/', (req: Request, res: Response) => {
-  const { hideCommittedCards, castingRulesToday, castingRulesNext } = req.body || {};
+  const { hideCommittedCards, castingRulesToday, castingRulesNext, cssOverrides } = req.body || {};
 
   if (hideCommittedCards !== undefined && typeof hideCommittedCards !== 'boolean') {
     res.status(400).json({ error: 'hideCommittedCards must be a boolean' });
@@ -23,8 +23,12 @@ router.put('/', (req: Request, res: Response) => {
     res.status(400).json({ error: 'castingRulesNext must be a string' });
     return;
   }
+  if (cssOverrides !== undefined && typeof cssOverrides !== 'string') {
+    res.status(400).json({ error: 'cssOverrides must be a string' });
+    return;
+  }
 
-  const updated = updateGlobalSettings({ hideCommittedCards, castingRulesToday, castingRulesNext });
+  const updated = updateGlobalSettings({ hideCommittedCards, castingRulesToday, castingRulesNext, cssOverrides });
   broadcast('settings:updated', updated);
   res.json(updated);
 });

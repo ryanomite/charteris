@@ -278,6 +278,8 @@ paths:
                     type: string
                   castingRulesNext:
                     type: string
+                  cssOverrides:
+                    type: string
     put:
       summary: Update global settings
       tags: [Settings]
@@ -296,6 +298,8 @@ paths:
                   type: string
                 castingRulesNext:
                   type: string
+                cssOverrides:
+                  type: string
       responses:
         "200":
           description: Updated global settings
@@ -309,6 +313,8 @@ paths:
                   castingRulesToday:
                     type: string
                   castingRulesNext:
+                    type: string
+                  cssOverrides:
                     type: string
 
   # --- Lists ---
@@ -1124,6 +1130,8 @@ paths:
                         castingRulesToday:
                           type: string
                         castingRulesNext:
+                          type: string
+                        cssOverrides:
                           type: string
 
   /dashboard/version:

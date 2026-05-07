@@ -7,6 +7,7 @@ const DEFAULT_GLOBAL_SETTINGS: IGlobalSettings = {
   hideCommittedCards: false,
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
   castingRulesNext: 'isDueTomorrow()',
+  cssOverrides: '',
 };
 
 export const useTaskStore = defineStore('tasks', () => {
@@ -112,6 +113,16 @@ export const useTaskStore = defineStore('tasks', () => {
     return tasks.value.find(t => t._id === taskId);
   }
 
+  // Count active cards in a list regardless of visibility filters.
+  function activeCardCountForList(listId: string): number {
+    return cards.value.filter(c => {
+      if (c.listId !== listId) return false;
+      const task = tasks.value.find(t => t._id === c.taskId);
+      if (!task) return false;
+      return !task.completed && !task.archived;
+    }).length;
+  }
+
   // Get label by ID
   function labelById(labelId: string): ILabel | undefined {
     return labels.value.find(l => l._id === labelId);
@@ -206,6 +217,7 @@ export const useTaskStore = defineStore('tasks', () => {
     sortedSections, fetchDashboard,
     fetchGlobalSettings, updateGlobalSettings, applyGlobalSettings,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
+    activeCardCountForList,
     isTaskCommitted,
     upsertTask, removeTask,
     upsertCard, removeCard,

@@ -53,6 +53,7 @@ export interface IGlobalSettings {
   hideCommittedCards: boolean;
   castingRulesToday: string;
   castingRulesNext: string;
+  cssOverrides: string;
 }
 
 export interface IDashboard {

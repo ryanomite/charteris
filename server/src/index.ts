@@ -109,7 +109,7 @@ if (fs.existsSync(publicDir)) {
   // Read index.html once and inject runtime config (API token)
   const indexPath = path.join(publicDir, 'index.html');
   const indexHtml = fs.readFileSync(indexPath, 'utf-8');
-  const runtimeScript = `<script>window.__CHARTERIS__={token:${JSON.stringify(config.apiToken)}}</script>`;
+  const runtimeScript = `<script>window.__CHARTERIS__={token:${JSON.stringify(config.apiToken)},version:${JSON.stringify(config.appVersion)},commit:${JSON.stringify(config.appCommit)}}</script>`;
   const injectedHtml = indexHtml.replace('</head>', `${runtimeScript}\n</head>`);
 
   app.use(express.static(publicDir, { index: false }));

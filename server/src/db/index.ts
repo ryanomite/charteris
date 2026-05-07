@@ -173,6 +173,31 @@ function runMigrations(): void {
   if (boardRow && boardRow.name === 'Board') {
     db.exec("UPDATE sections SET name = 'Cabinet' WHERE slug = 'board'");
   }
+
+  // One-time label migration: rename "pm" to "home".
+  // If "home" already exists, merge task links into "home" and delete "pm".
+  const pmLabel = db.prepare("SELECT id FROM labels WHERE name = ? COLLATE NOCASE").get('pm') as { id: string } | undefined;
+  if (pmLabel) {
+    const homeLabel = db.prepare("SELECT id FROM labels WHERE name = ? COLLATE NOCASE").get('home') as { id: string } | undefined;
+    const ts = now();
+    if (homeLabel && homeLabel.id !== pmLabel.id) {
+      db.exec('BEGIN TRANSACTION');
+      try {
+        db.prepare(`
+          INSERT OR IGNORE INTO task_labels (taskId, labelId)
+          SELECT taskId, ? FROM task_labels WHERE labelId = ?
+        `).run(homeLabel.id, pmLabel.id);
+        db.prepare('DELETE FROM task_labels WHERE labelId = ?').run(pmLabel.id);
+        db.prepare('DELETE FROM labels WHERE id = ?').run(pmLabel.id);
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
+    } else {
+      db.prepare('UPDATE labels SET name = ?, updatedAt = ? WHERE id = ?').run('home', ts, pmLabel.id);
+    }
+  }
 }
 
 function seedIfEmpty(): void {

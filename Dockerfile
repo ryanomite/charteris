@@ -15,6 +15,11 @@ RUN npm run build
 # Stage 2: Server with built frontend
 FROM node:20-alpine
 
+ARG CHARTERIS_VERSION=dev
+ARG CHARTERIS_GIT_SHA=
+ENV CHARTERIS_VERSION=${CHARTERIS_VERSION}
+ENV CHARTERIS_GIT_SHA=${CHARTERIS_GIT_SHA}
+
 # better-sqlite3 needs build tools at install time
 RUN apk add --no-cache python3 make g++
 

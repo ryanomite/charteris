@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
@@ -19,6 +19,7 @@ const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
 const globalSettingsOpen = ref(false);
 const lastDashboardVersion = ref<string | null>(null);
+const cssOverrides = computed(() => store.globalSettings.cssOverrides || '');
 
 function openCard(card: ICard) {
   editingCard.value = card;
@@ -142,6 +143,7 @@ onUnmounted(() => {
     <div class="stars stars--medium"></div>
     <div class="stars stars--large"></div>
   </div>
+  <component :is="'style'" v-if="cssOverrides">{{ cssOverrides }}</component>
   <div class="app-shell" v-if="!store.loading">
     <header class="app-header">
       <img src="/charteris-white.svg" alt="Charteris" class="app-header__logo" />

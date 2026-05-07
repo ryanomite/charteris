@@ -11,11 +11,13 @@ const error = ref('');
 const hideCommittedCards = ref(false);
 const castingRulesToday = ref('');
 const castingRulesNext = ref('');
+const cssOverrides = ref('');
 
 const hasChanges = computed(() => (
   hideCommittedCards.value !== store.globalSettings.hideCommittedCards
   || castingRulesToday.value !== store.globalSettings.castingRulesToday
   || castingRulesNext.value !== store.globalSettings.castingRulesNext
+  || cssOverrides.value !== store.globalSettings.cssOverrides
 ));
 
 watch(
@@ -26,6 +28,7 @@ watch(
     hideCommittedCards.value = store.globalSettings.hideCommittedCards;
     castingRulesToday.value = store.globalSettings.castingRulesToday;
     castingRulesNext.value = store.globalSettings.castingRulesNext;
+    cssOverrides.value = store.globalSettings.cssOverrides;
   },
   { immediate: true },
 );
@@ -38,6 +41,7 @@ async function save() {
       hideCommittedCards: hideCommittedCards.value,
       castingRulesToday: castingRulesToday.value.trim(),
       castingRulesNext: castingRulesNext.value.trim(),
+      cssOverrides: cssOverrides.value,
     });
     emit('close');
   } catch (err: any) {
@@ -105,6 +109,17 @@ regex('security|audit', title) && inList('Backlog')
 
 currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
           </details>
+
+          <div class="setting-block">
+            <label for="css-overrides">Global CSS overrides</label>
+            <textarea
+              id="css-overrides"
+              v-model="cssOverrides"
+              rows="6"
+              class="setting-input"
+              placeholder=".label-home { background-color: #245 !important; }\n.list-workstuff { box-shadow: 0 0 20px #4af; }"
+            ></textarea>
+          </div>
 
           <p v-if="error" class="modal__error">{{ error }}</p>
         </div>

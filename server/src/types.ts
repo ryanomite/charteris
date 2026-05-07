@@ -64,4 +64,5 @@ export interface GlobalSettings {
   hideCommittedCards: boolean;
   castingRulesToday: string;
   castingRulesNext: string;
+  cssOverrides: string;
 }

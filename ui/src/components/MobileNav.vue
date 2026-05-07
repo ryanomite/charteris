@@ -21,6 +21,10 @@ const sections = computed(() => {
 });
 
 const settingsOpen = ref(false);
+const runtimeInfo = (window as any).__CHARTERIS__ || {};
+const buildVersion = runtimeInfo.version || 'dev';
+const buildCommit = runtimeInfo.commit || '';
+const buildDisplay = buildCommit ? `v${buildVersion} ${buildCommit}` : `v${buildVersion}`;
 
 function toggleSettings() {
   settingsOpen.value = !settingsOpen.value;
@@ -124,6 +128,9 @@ function openGlobalSettings() {
             Import tasks
           </button>
         </li>
+        <li role="none" class="settings-dropdown__meta-row">
+          <span class="settings-dropdown__meta">{{ buildDisplay }}</span>
+        </li>
       </ul>
       <div v-if="settingsOpen" class="settings-dropdown__backdrop" @click="closeSettings"></div>
     </div>
@@ -213,6 +220,19 @@ function openGlobalSettings() {
   position: fixed;
   inset: 0;
   z-index: 199;
+}
+
+.settings-dropdown__meta-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 4px;
+  padding: 8px 12px 4px;
+}
+
+.settings-dropdown__meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 768px) {
