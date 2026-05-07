@@ -5,6 +5,7 @@ export interface ParsedTaskMacros {
   targetListName: string | null;
   dueDate: string | null;
   addToToday: boolean;
+  addToNext: boolean;
 }
 
 function formatYmd(date: Date): string {
@@ -131,10 +132,33 @@ export function parseTaskMacros(rawInput: string): ParsedTaskMacros {
   let targetListName: string | null = null;
   let dueDate: string | null = null;
   let addToToday = false;
+  let addToNext = false;
 
-  // Standalone "!" at start or after whitespace, including forms like "!Buy milk".
-  working = working.replace(/(^|\s)!+(?=\s|$|\S)/g, (_m, p1: string) => {
+  // Today marker: standalone !, plus leading/trailing forms like "!Buy milk" and "Buy milk!".
+  working = working.replace(/^\s*!+/, (_m) => {
     addToToday = true;
+    return ' ';
+  });
+  working = working.replace(/!+\s*$/, (_m) => {
+    addToToday = true;
+    return ' ';
+  });
+  working = working.replace(/(^|\s)!+(?=\s|$)/g, (_m, p1: string) => {
+    addToToday = true;
+    return p1 || ' ';
+  });
+
+  // Next marker: standalone >, plus leading/trailing forms like ">Buy milk" and "Buy milk>".
+  working = working.replace(/^\s*>+/, (_m) => {
+    addToNext = true;
+    return ' ';
+  });
+  working = working.replace(/>+\s*$/, (_m) => {
+    addToNext = true;
+    return ' ';
+  });
+  working = working.replace(/(^|\s)>+(?=\s|$)/g, (_m, p1: string) => {
+    addToNext = true;
     return p1 || ' ';
   });
 
@@ -186,5 +210,6 @@ export function parseTaskMacros(rawInput: string): ParsedTaskMacros {
     targetListName,
     dueDate,
     addToToday,
+    addToNext,
   };
 }

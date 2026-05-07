@@ -4,7 +4,7 @@ import { useTaskStore } from '../stores/taskStore';
 import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
 import { parseTaskMacros } from '../utils/taskMacros';
-import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
+import { resolveLabelIds, findTodayList, findNextList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
 import { toClassSlug } from '../utils/classNames';
 import api from '../services/api';
 import TaskCard from './TaskCard.vue';
@@ -103,7 +103,7 @@ async function submitNewCard() {
     return;
   }
   try {
-    const { title, priority, labelNames, addToToday, dueDate, targetListName } = parseTaskMacros(rawInput);
+    const { title, priority, labelNames, addToToday, addToNext, dueDate, targetListName } = parseTaskMacros(rawInput);
     if (!title) {
       cancelAdding();
       return;
@@ -112,6 +112,7 @@ async function submitNewCard() {
     const labelIds = await resolveLabelIds(store, labelNames);
 
     const todayList = findTodayList(store);
+    const nextList = findNextList(store);
     const targetCabinetList = targetListName ? await ensureCabinetList(store, targetListName) : null;
 
     let primaryListId = props.list._id;
@@ -137,6 +138,11 @@ async function submitNewCard() {
     // If ! shortcut used, also add card to Today list (if not already in a planning list)
     if (addToToday && todayList && todayList._id !== primaryListId) {
       await addCardIfMissing(store, task._id, todayList._id);
+    }
+
+    // If > shortcut used, also add card to Next list (if not already in that list)
+    if (addToNext && nextList && nextList._id !== primaryListId) {
+      await addCardIfMissing(store, task._id, nextList._id);
     }
 
     newTitle.value = '';

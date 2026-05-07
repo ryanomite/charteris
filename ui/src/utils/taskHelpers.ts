@@ -24,6 +24,12 @@ export function findTodayList(store: ReturnType<typeof useTaskStore>): IList | n
   return store.lists.find(l => l.sectionId === planning._id && l.name.toLowerCase() === 'today') || null;
 }
 
+export function findNextList(store: ReturnType<typeof useTaskStore>): IList | null {
+  const planning = store.sections.find(s => s.slug === 'planning');
+  if (!planning) return null;
+  return store.lists.find(l => l.sectionId === planning._id && l.name.toLowerCase() === 'next') || null;
+}
+
 export function findBoardSectionId(store: ReturnType<typeof useTaskStore>): string | null {
   const board = store.sections.find(s => s.slug === 'board');
   return board?._id ?? null;

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import { parseTaskMacros } from '../utils/taskMacros';
-import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
+import { resolveLabelIds, findTodayList, findNextList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
 import type { IList } from '../types';
 
 interface RawImportTask {
@@ -126,6 +126,11 @@ async function importOne(rawTask: RawImportTask): Promise<void> {
   if (macros.addToToday) {
     const todayList = findTodayList(store);
     if (todayList) await addCardIfMissing(store, task._id, todayList._id);
+  }
+
+  if (macros.addToNext) {
+    const nextList = findNextList(store);
+    if (nextList) await addCardIfMissing(store, task._id, nextList._id);
   }
 }
 

@@ -3,7 +3,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { computeNextDueDate, handleRecurringCompletion } from '../composables/useRecurrence';
 import { parseTaskMacros } from '../utils/taskMacros';
-import { resolveLabelIds, findTodayList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
+import { resolveLabelIds, findTodayList, findNextList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
 import api from '../services/api';
 import type { ICard, ITask, ILabel, ISubtask } from '../types';
 
@@ -158,6 +158,13 @@ async function save() {
       const todayList = findTodayList(store);
       if (todayList) {
         await addCardIfMissing(store, task.value._id, todayList._id);
+      }
+    }
+
+    if (parsed.addToNext) {
+      const nextList = findNextList(store);
+      if (nextList) {
+        await addCardIfMissing(store, task.value._id, nextList._id);
       }
     }
 
