@@ -80,7 +80,11 @@ async function adjourn() {
 
 async function cast() {
   try {
-    const { data } = await api.post('/sections/board/cast');
+    const now = new Date();
+    const { data } = await api.post('/sections/board/cast', {
+      localHour: now.getHours(),
+      localWeekday: now.getDay(),
+    });
     await store.refreshListCards(data.listIds);
   } catch (err) {
     console.error('Cast failed:', err);

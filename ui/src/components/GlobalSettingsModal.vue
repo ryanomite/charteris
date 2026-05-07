@@ -95,13 +95,15 @@ function close() {
           <details class="setting-help">
             <summary>Expression help</summary>
             <p>Available fields: <code>title</code>, <code>description</code>, <code>priority</code>, <code>dueDate</code>, <code>completed</code>, <code>archived</code>, <code>recurrence</code>, <code>master</code>, <code>parentId</code></p>
-            <p>Available helpers: <code>hasLabel(name)</code>, <code>inList(name)</code>, <code>regex(pattern, value, flags)</code>, <code>isDueToday()</code>, <code>isDueTomorrow()</code>, <code>isOverdue()</code>, <code>daysUntilDue()</code>, <code>today()</code>, <code>tomorrow()</code></p>
+            <p>Available helpers: <code>hasLabel(name)</code>, <code>inList(name)</code>, <code>regex(pattern, value, flags)</code>, <code>isDueToday()</code>, <code>isDueTomorrow()</code>, <code>isOverdue()</code>, <code>daysUntilDue()</code>, <code>today()</code>, <code>tomorrow()</code>, <code>currentHour()</code>, <code>currentWeekday()</code></p>
             <p>Examples:</p>
             <pre class="setting-code">priority === 1 || isOverdue() || isDueToday()
 
 hasLabel('Work') && !completed && (isDueToday() || isDueTomorrow())
 
-regex('security|audit', title) && inList('Backlog')</pre>
+regex('security|audit', title) && inList('Backlog')
+
+currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
           </details>
 
           <p v-if="error" class="modal__error">{{ error }}</p>

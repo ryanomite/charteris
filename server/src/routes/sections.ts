@@ -29,7 +29,14 @@ function toYmdLocal(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function evaluateCastingRule(rule: string, task: Task, labelNames: string[], listNames: string[]): boolean {
+function evaluateCastingRule(
+  rule: string,
+  task: Task,
+  labelNames: string[],
+  listNames: string[],
+  localHour: number,
+  localWeekday: number,
+): boolean {
   const todayDate = startOfToday();
   const tomorrowDate = new Date(todayDate);
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
@@ -54,6 +61,8 @@ function evaluateCastingRule(rule: string, task: Task, labelNames: string[], lis
   };
   const today = () => toYmdLocal(todayDate);
   const tomorrow = () => toYmdLocal(tomorrowDate);
+  const currentHour = () => localHour;
+  const currentWeekday = () => localWeekday;
 
   try {
     const fn = new Function(
@@ -69,6 +78,8 @@ function evaluateCastingRule(rule: string, task: Task, labelNames: string[], lis
       'daysUntilDue',
       'today',
       'tomorrow',
+      'currentHour',
+      'currentWeekday',
       `"use strict"; const { title, description, priority, dueDate, completed, archived, recurrence, master, parentId } = task; return Boolean(${rule});`,
     ) as (
       task: Task,
@@ -83,8 +94,10 @@ function evaluateCastingRule(rule: string, task: Task, labelNames: string[], lis
       daysUntilDue: () => number | null,
       today: () => string,
       tomorrow: () => string,
+      currentHour: () => number,
+      currentWeekday: () => number,
     ) => boolean;
-    return fn(task, labelNames, listNames, hasLabel, inList, regex, isDueToday, isDueTomorrow, isOverdue, daysUntilDue, today, tomorrow);
+    return fn(task, labelNames, listNames, hasLabel, inList, regex, isDueToday, isDueTomorrow, isOverdue, daysUntilDue, today, tomorrow, currentHour, currentWeekday);
   } catch {
     return false;
   }
@@ -152,7 +165,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
 // POST /sections/board/cast
 // → Today: incomplete/unarchived tasks overdue, due today, or priority 1
 // → Next:  incomplete/unarchived tasks due tomorrow (not already in Today or Next)
-router.post('/board/cast', (_req: Request, res: Response) => {
+router.post('/board/cast', (req: Request, res: Response) => {
   const planningSec = findSectionBySlug('planning');
   if (!planningSec) { res.status(404).json({ error: 'Planning section not found' }); return; }
 
@@ -160,6 +173,16 @@ router.post('/board/cast', (_req: Request, res: Response) => {
   const todayList = lists.find(l => l.name === 'Today');
   const nextList  = lists.find(l => l.name === 'Next');
   if (!todayList || !nextList) { res.status(500).json({ error: 'Today or Next list not found' }); return; }
+
+  const now = new Date();
+  const bodyHour = Number(req.body?.localHour);
+  const bodyWeekday = Number(req.body?.localWeekday);
+  const localHour = Number.isFinite(bodyHour) && bodyHour >= 0 && bodyHour <= 23
+    ? bodyHour
+    : now.getHours();
+  const localWeekday = Number.isFinite(bodyWeekday) && bodyWeekday >= 0 && bodyWeekday <= 6
+    ? bodyWeekday
+    : now.getDay();
 
   const settings = findGlobalSettings();
   const allLabels = findAllLabels();
@@ -184,13 +207,13 @@ router.post('/board/cast', (_req: Request, res: Response) => {
   const eligibleToday = candidates.filter(task => {
     const labelNames = task.labels.map(id => labelNameById.get(id)).filter(Boolean) as string[];
     const listNames = listNamesByTaskId.get(task._id) || [];
-    return evaluateCastingRule(settings.castingRulesToday, task, labelNames, listNames);
+    return evaluateCastingRule(settings.castingRulesToday, task, labelNames, listNames, localHour, localWeekday);
   });
 
   const eligibleTomorrow = candidates.filter(task => {
     const labelNames = task.labels.map(id => labelNameById.get(id)).filter(Boolean) as string[];
     const listNames = listNamesByTaskId.get(task._id) || [];
-    return evaluateCastingRule(settings.castingRulesNext, task, labelNames, listNames);
+    return evaluateCastingRule(settings.castingRulesNext, task, labelNames, listNames, localHour, localWeekday);
   });
 
   // --- Today rule ---
