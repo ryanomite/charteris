@@ -589,6 +589,12 @@ paths:
                   type: string
                   format: date
                   nullable: true
+                listId:
+                  type: string
+                  description: Optional target list ID for initial card placement
+                applyMacros:
+                  type: boolean
+                  description: When true, server parses title macros (#list, @label, !, >)
                 recurrence:
                   type: string
                 completed:

@@ -121,6 +121,7 @@ export async function handleRecurringCompletion(taskId: string): Promise<void> {
   if (!nextDate) return;
 
   try {
+    const seedListId = cabinetCards[0].listId;
     // Create clone task
     const { data: cloneTask } = await api.post('/tasks', {
       title: task.title,
@@ -134,11 +135,13 @@ export async function handleRecurringCompletion(taskId: string): Promise<void> {
       master: task.master,
       parentId: task.parentId,
       subtasks: task.subtasks.map(s => ({ title: s.title, completed: false })),
+      listId: seedListId,
     });
     store.upsertTask(cloneTask);
 
     // Create cards only in Cabinet lists
     for (const cabinetCard of cabinetCards) {
+      if (cabinetCard.listId === seedListId) continue;
       const { data: card } = await api.post('/cards', {
         taskId: cloneTask._id,
         listId: cabinetCard.listId,

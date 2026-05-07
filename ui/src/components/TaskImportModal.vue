@@ -110,6 +110,7 @@ async function importOne(rawTask: RawImportTask): Promise<void> {
     master: rawTask.master || false,
     parentId: rawTask.parentId || null,
     subtasks: (rawTask.subtasks || []).map(s => ({ title: s.title, completed: !!s.completed })),
+    listId: primaryList._id,
   };
   if (labelIds.length) taskPayload.labels = labelIds;
 

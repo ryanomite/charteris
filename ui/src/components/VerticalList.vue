@@ -121,6 +121,7 @@ async function submitNewCard() {
     }
 
     const taskPayload: Record<string, unknown> = { title };
+    taskPayload.listId = primaryListId;
     if (priority !== null) taskPayload.priority = priority;
     if (labelIds.length) taskPayload.labels = labelIds;
     if (dueDate) taskPayload.dueDate = dueDate;
