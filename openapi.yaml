@@ -1059,6 +1059,28 @@ paths:
                                 task:
                                   $ref: "#/components/schemas/Task"
 
+  /dashboard/version:
+    get:
+      summary: Get lightweight dashboard version for refresh checks
+      tags: [Dashboard]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Version metadata for change detection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    description: Millisecond timestamp string of latest change across dashboard entities
+                  latestChangeAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+
   # --- Admin ---
   /admin/drop:
     post:

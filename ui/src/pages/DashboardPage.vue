@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import api from '../services/api';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
 import { useWebSocket } from '../composables/useWebSocket';
 import { runRecurrenceChecks, needsRecurrenceCheck } from '../composables/useRecurrence';
@@ -15,6 +16,7 @@ const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
 const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
+const lastDashboardVersion = ref<string | null>(null);
 
 function openCard(card: ICard) {
   editingCard.value = card;
@@ -53,11 +55,43 @@ let recurrenceTimer: ReturnType<typeof setInterval> | null = null;
 async function refreshFromServer() {
   await store.fetchDashboard();
   await runRecurrenceChecks();
+  try {
+    const { data } = await api.get('/dashboard/version');
+    lastDashboardVersion.value = data?.version ?? null;
+  } catch {
+    // If version check fails, we still keep refreshed dashboard data.
+  }
+}
+
+async function fetchDashboardVersion(): Promise<string | null> {
+  try {
+    const { data } = await api.get('/dashboard/version');
+    return data?.version ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function onVisibilityOrFocus() {
   if (document.visibilityState !== 'visible') return;
-  await refreshFromServer();
+  if (needsRecurrenceCheck()) {
+    await runRecurrenceChecks();
+  }
+
+  const serverVersion = await fetchDashboardVersion();
+  if (!serverVersion) {
+    await refreshFromServer();
+    return;
+  }
+
+  if (!lastDashboardVersion.value) {
+    lastDashboardVersion.value = serverVersion;
+    return;
+  }
+
+  if (serverVersion !== lastDashboardVersion.value) {
+    await refreshFromServer();
+  }
 }
 
 onMounted(async () => {
