@@ -122,7 +122,7 @@ router.post('/', (req: Request, res: Response) => {
   const task = insertTask({
     title: finalTitle,
     description: description || '',
-    priority: parsed?.priority ?? priority || null,
+    priority: parsed?.priority ?? priority ?? null,
     labels: labelIds,
     dueDate: dueDate || null,
     recurrence: recurrence || '',
