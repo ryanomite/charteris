@@ -34,6 +34,24 @@ COPY openapi.yaml ./openapi.yaml
 # Copy built Vue app into /app/public
 COPY --from=ui-build /ui/dist ./public
 
+# Extract version and commit SHA from git metadata (no git install needed).
+# Reads .git/COMMIT_EDITMSG for the last commit subject and .git/HEAD for the SHA.
+# Writes /app/build-info.json which config/index.ts reads as a fallback.
+COPY .git /tmp/git-meta
+RUN set -e; \
+    COMMIT_MSG=$(head -1 /tmp/git-meta/COMMIT_EDITMSG 2>/dev/null || echo ''); \
+    VERSION=$(echo "$COMMIT_MSG" | awk '{print $1}'); \
+    if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then VERSION=dev; fi; \
+    HEAD_CONTENTS=$(cat /tmp/git-meta/HEAD); \
+    if echo "$HEAD_CONTENTS" | grep -q '^ref:'; then \
+      REF=$(echo "$HEAD_CONTENTS" | sed 's/ref: //'); \
+      SHA=$(cut -c1-7 /tmp/git-meta/$REF 2>/dev/null || echo ''); \
+    else \
+      SHA=$(echo "$HEAD_CONTENTS" | cut -c1-7); \
+    fi; \
+    printf '{"version":"%s","commit":"%s"}\n' "$VERSION" "$SHA" > /app/build-info.json; \
+    rm -rf /tmp/git-meta
+
 EXPOSE 8080
 
 # Use tsx to run TypeScript directly
