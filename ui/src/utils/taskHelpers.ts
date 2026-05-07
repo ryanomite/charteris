@@ -1,6 +1,7 @@
 import api from '../services/api';
 import type { IList } from '../types';
 import { useTaskStore } from '../stores/taskStore';
+import { toClassSlug } from './classNames';
 
 export async function resolveLabelIds(store: ReturnType<typeof useTaskStore>, names: string[]): Promise<string[]> {
   const ids: string[] = [];
@@ -40,8 +41,10 @@ export async function ensureCabinetList(store: ReturnType<typeof useTaskStore>, 
   if (!trimmed) return null;
   const boardSectionId = findBoardSectionId(store);
   if (!boardSectionId) return null;
+  const normalizedTarget = toClassSlug(trimmed);
 
-  let list = store.lists.find(l => l.sectionId === boardSectionId && l.name.toLowerCase() === trimmed.toLowerCase()) || null;
+  // Macro matching is case-insensitive and ignores whitespace/emoji/special chars.
+  let list = store.lists.find(l => l.sectionId === boardSectionId && toClassSlug(l.name) === normalizedTarget) || null;
   if (list?.archived) {
     const { data } = await api.patch(`/lists/${list._id}/archive`);
     store.upsertList(data);
