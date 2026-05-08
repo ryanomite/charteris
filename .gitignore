@@ -53,3 +53,6 @@ coverage/
 logs/
 *.log
 *.stackdump
+
+# Nested HACS repository
+hacs-charteris/
