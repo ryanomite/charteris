@@ -110,7 +110,6 @@ function createTables(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_cards_list_order ON cards(listId, "order");
     CREATE INDEX IF NOT EXISTS idx_cards_taskId ON cards(taskId);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_task_list_unique ON cards(taskId, listId);
 
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
