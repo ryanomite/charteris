@@ -39,6 +39,12 @@ export function findCardByTaskInLists(taskId: string, listIds: string[]): Card |
 
 export function insertCard(data: { taskId: string; listId: string; order?: number }): Card {
   const db = getDb();
+  const existing = db.prepare('SELECT * FROM cards WHERE taskId = ? AND listId = ? LIMIT 1')
+    .get(data.taskId, data.listId) as any;
+  if (existing) {
+    return toCard(existing);
+  }
+
   const id = generateId();
   const ts = now();
 

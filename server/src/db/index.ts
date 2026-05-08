@@ -110,6 +110,7 @@ function createTables(): void {
     );
     CREATE INDEX IF NOT EXISTS idx_cards_list_order ON cards(listId, "order");
     CREATE INDEX IF NOT EXISTS idx_cards_taskId ON cards(taskId);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_task_list_unique ON cards(taskId, listId);
 
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -198,6 +199,26 @@ function runMigrations(): void {
       db.prepare('UPDATE labels SET name = ?, updatedAt = ? WHERE id = ?').run('home', ts, pmLabel.id);
     }
   }
+
+  // Remove duplicate cards in the same list for the same task, keeping most recent.
+  db.exec(`
+    DELETE FROM cards
+    WHERE rowid IN (
+      SELECT rowid FROM (
+        SELECT
+          rowid,
+          ROW_NUMBER() OVER (
+            PARTITION BY taskId, listId
+            ORDER BY updatedAt DESC, createdAt DESC, id DESC
+          ) AS rn
+        FROM cards
+      ) ranked
+      WHERE ranked.rn > 1
+    )
+  `);
+
+  // Enforce one card per task per list.
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_task_list_unique ON cards(taskId, listId)');
 }
 
 function seedIfEmpty(): void {

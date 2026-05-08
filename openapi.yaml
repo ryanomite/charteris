@@ -1214,6 +1214,29 @@ paths:
                   message:
                     type: string
 
+  /admin/deduplicate:
+    post:
+      summary: Remove duplicate cards and duplicate-titled tasks
+      tags: [Admin]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Deduplication complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  duplicateCardsRemoved:
+                    type: integer
+                  duplicateTasksRemoved:
+                    type: integer
+                  affectedListCount:
+                    type: integer
+
   # --- Public helpers (no auth) ---
   /public/today/top:
     get:

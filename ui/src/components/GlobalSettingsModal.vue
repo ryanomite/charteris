@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import api from '../services/api';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 const store = useTaskStore();
 
 const saving = ref(false);
+const deduping = ref(false);
 const error = ref('');
 const hideCommittedCards = ref(false);
 const castingRulesToday = ref('');
@@ -48,6 +50,21 @@ async function save() {
     error.value = err?.response?.data?.error || 'Failed to save settings';
   } finally {
     saving.value = false;
+  }
+}
+
+async function removeDuplicates() {
+  if (saving.value || deduping.value) return;
+  if (!confirm('Remove duplicate cards and duplicate-titled tasks? Keeps only the most recent occurrence.')) return;
+  error.value = '';
+  deduping.value = true;
+  try {
+    await api.post('/admin/deduplicate');
+    await store.fetchDashboard();
+  } catch (err: any) {
+    error.value = err?.response?.data?.error || 'Failed to remove duplicates';
+  } finally {
+    deduping.value = false;
   }
 }
 
@@ -125,6 +142,9 @@ currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
         </div>
 
         <div class="modal__footer">
+          <button class="modal__btn modal__btn--danger" @click="removeDuplicates" :disabled="saving || deduping">
+            {{ deduping ? 'Removing duplicates...' : 'Remove duplicates' }}
+          </button>
           <button class="modal__btn" @click="close" :disabled="saving">Cancel</button>
           <button class="modal__btn modal__btn--primary" @click="save" :disabled="saving || !hasChanges">
             {{ saving ? 'Saving...' : 'Save settings' }}
@@ -246,5 +266,11 @@ currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
 
 .modal__btn--primary {
   background: var(--accent, #457B9D);
+}
+
+.modal__btn--danger {
+  margin-right: auto;
+  background: rgba(220, 70, 70, 0.22);
+  color: #ffd6d6;
 }
 </style>

@@ -128,9 +128,9 @@ async function submitNewCard() {
 
     const { data: task } = await api.post('/tasks', taskPayload);
     store.upsertTask(task);
-    const { data: card } = await api.post('/cards', { taskId: task._id, listId: primaryListId });
-    store.upsertCard(card);
-    lastCreatedCardId.value = card._id;
+    await store.refreshListCards([primaryListId]);
+    const seededCard = store.cards.find(c => c.taskId === task._id && c.listId === primaryListId) || null;
+    lastCreatedCardId.value = seededCard?._id || null;
 
     if (targetCabinetList && props.section.slug === 'planning') {
       await addCardIfMissing(store, task._id, targetCabinetList._id);

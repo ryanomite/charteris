@@ -116,7 +116,6 @@ async function importOne(rawTask: RawImportTask): Promise<void> {
 
   const { data: task } = await api.post('/tasks', taskPayload);
   store.upsertTask(task);
-  await addCardIfMissing(store, task._id, primaryList._id);
 
   // If importing into planning and a #list macro exists, also add to that cabinet list.
   if (!targetList.value && macros.targetListName && primaryList.sectionId !== (store.sections.find(s => s.slug === 'board')?._id || '')) {
