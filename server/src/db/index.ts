@@ -67,6 +67,8 @@ function createTables(): void {
       archived INTEGER NOT NULL DEFAULT 0,
       master INTEGER NOT NULL DEFAULT 0,
       parentId TEXT REFERENCES tasks(id),
+      committedAt TEXT,
+      completedAt TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -116,6 +118,23 @@ function createTables(): void {
       value TEXT NOT NULL,
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS task_events (
+      id TEXT PRIMARY KEY,
+      taskId TEXT NOT NULL,
+      eventType TEXT NOT NULL,
+      occurredAt TEXT NOT NULL,
+      taskTitle TEXT NOT NULL,
+      taskPriority INTEGER,
+      taskDueDate TEXT,
+      cabinetListId TEXT,
+      cabinetListName TEXT,
+      taskCompleted INTEGER NOT NULL DEFAULT 0,
+      taskArchived INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_events_occurredAt ON task_events(occurredAt);
+    CREATE INDEX IF NOT EXISTS idx_task_events_taskId_occurredAt ON task_events(taskId, occurredAt);
+    CREATE INDEX IF NOT EXISTS idx_task_events_eventType_occurredAt ON task_events(eventType, occurredAt);
   `);
 }
 
@@ -123,6 +142,14 @@ function runMigrations(): void {
   const cols = (db.prepare('PRAGMA table_info(lists)').all() as any[]).map((r: any) => r.name);
   if (!cols.includes('archived')) {
     db.exec('ALTER TABLE lists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
+  }
+
+  const taskCols = (db.prepare('PRAGMA table_info(tasks)').all() as any[]).map((r: any) => r.name);
+  if (!taskCols.includes('committedAt')) {
+    db.exec('ALTER TABLE tasks ADD COLUMN committedAt TEXT');
+  }
+  if (!taskCols.includes('completedAt')) {
+    db.exec('ALTER TABLE tasks ADD COLUMN completedAt TEXT');
   }
 
   // Expand tasks.priority constraint to allow value 5.
@@ -143,13 +170,15 @@ function runMigrations(): void {
         archived INTEGER NOT NULL DEFAULT 0,
         master INTEGER NOT NULL DEFAULT 0,
         parentId TEXT REFERENCES tasks_new(id),
+        committedAt TEXT,
+        completedAt TEXT,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
     db.exec(`
-      INSERT INTO tasks_new (id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, createdAt, updatedAt)
-      SELECT id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, createdAt, updatedAt
+      INSERT INTO tasks_new (id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, committedAt, completedAt, createdAt, updatedAt)
+      SELECT id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, NULL, NULL, createdAt, updatedAt
       FROM tasks
     `);
     db.exec('DROP TABLE tasks');
@@ -218,6 +247,25 @@ function runMigrations(): void {
 
   // Enforce one card per task per list.
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_task_list_unique ON cards(taskId, listId)');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS task_events (
+      id TEXT PRIMARY KEY,
+      taskId TEXT NOT NULL,
+      eventType TEXT NOT NULL,
+      occurredAt TEXT NOT NULL,
+      taskTitle TEXT NOT NULL,
+      taskPriority INTEGER,
+      taskDueDate TEXT,
+      cabinetListId TEXT,
+      cabinetListName TEXT,
+      taskCompleted INTEGER NOT NULL DEFAULT 0,
+      taskArchived INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_occurredAt ON task_events(occurredAt)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_taskId_occurredAt ON task_events(taskId, occurredAt)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_eventType_occurredAt ON task_events(eventType, occurredAt)');
 }
 
 function seedIfEmpty(): void {

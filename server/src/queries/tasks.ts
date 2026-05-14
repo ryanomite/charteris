@@ -29,6 +29,8 @@ function toTask(row: any): Task {
     master: !!row.master,
     parentId: row.parentId || null,
     subtasks: getSubtasks(row.id),
+    committedAt: row.committedAt || null,
+    completedAt: row.completedAt || null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -100,6 +102,8 @@ interface CreateTaskData {
   master?: boolean;
   parentId?: string | null;
   subtasks?: { title: string; completed: boolean }[];
+  committedAt?: string | null;
+  completedAt?: string | null;
 }
 
 export function insertTask(data: CreateTaskData): Task {
@@ -108,8 +112,8 @@ export function insertTask(data: CreateTaskData): Task {
   const ts = now();
 
   db.prepare(`
-    INSERT INTO tasks (id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO tasks (id, title, description, priority, dueDate, recurrence, completed, archived, master, parentId, committedAt, completedAt, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     data.title,
@@ -121,6 +125,8 @@ export function insertTask(data: CreateTaskData): Task {
     data.archived ? 1 : 0,
     data.master ? 1 : 0,
     data.parentId || null,
+    data.committedAt ?? null,
+    data.completedAt ?? null,
     ts,
     ts,
   );
@@ -160,6 +166,8 @@ interface UpdateTaskData {
   recurrence?: string;
   completed?: boolean;
   archived?: boolean;
+  committedAt?: string | null;
+  completedAt?: string | null;
   subtasks?: { _id?: string; title: string; completed: boolean }[];
 }
 
@@ -177,6 +185,8 @@ export function updateTask(id: string, data: UpdateTaskData): Task | null {
   if (data.recurrence !== undefined) { sets.push('recurrence = ?'); params.push(data.recurrence); }
   if (data.completed !== undefined) { sets.push('completed = ?'); params.push(data.completed ? 1 : 0); }
   if (data.archived !== undefined) { sets.push('archived = ?'); params.push(data.archived ? 1 : 0); }
+  if (data.committedAt !== undefined) { sets.push('committedAt = ?'); params.push(data.committedAt); }
+  if (data.completedAt !== undefined) { sets.push('completedAt = ?'); params.push(data.completedAt); }
 
   params.push(id);
   db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`).run(...params);
@@ -283,6 +293,14 @@ export function deleteTask(id: string): void {
   db.prepare('DELETE FROM subtasks WHERE taskId = ?').run(id);
   db.prepare('DELETE FROM task_labels WHERE taskId = ?').run(id);
   db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+}
+
+export function setTaskCommittedAt(id: string, committedAt: string | null): void {
+  getDb().prepare('UPDATE tasks SET committedAt = ? WHERE id = ?').run(committedAt, id);
+}
+
+export function setTaskCompletedAt(id: string, completedAt: string | null): void {
+  getDb().prepare('UPDATE tasks SET completedAt = ? WHERE id = ?').run(completedAt, id);
 }
 
 export function deleteTaskSeries(parentId: string): { deletedCount: number; taskIds: string[] } {

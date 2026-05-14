@@ -7,6 +7,7 @@ import {
 import { findListById, findAllLists } from '../queries/lists';
 import { findSectionById } from '../queries/sections';
 import { findTaskById, deleteTask } from '../queries/tasks';
+import { trackCommitmentTransition, trackTaskDeletion } from '../utils/taskEventTracking';
 import { broadcast } from '../ws';
 
 const router = Router();
@@ -32,6 +33,7 @@ router.post('/', (req: Request, res: Response) => {
   }
 
   const card = insertCard({ taskId, listId });
+  trackCommitmentTransition(taskId, null, listId);
   broadcast('card:created', card);
   res.status(201).json(card);
 });
@@ -44,6 +46,9 @@ router.put('/:id', (req: Request, res: Response) => {
     listId: req.body.listId,
     order: req.body.order,
   });
+  if (updated) {
+    trackCommitmentTransition(card.taskId, card.listId, updated.listId);
+  }
   broadcast('card:updated', updated);
   res.json(updated);
 });
@@ -57,11 +62,15 @@ router.delete('/:id', (req: Request, res: Response) => {
 
   if (otherCards.length > 0) {
     // Task exists elsewhere — just remove this card
+    trackCommitmentTransition(card.taskId, card.listId, null);
     deleteCard(card._id);
     broadcast('card:deleted', { _id: card._id });
     res.json({ message: 'Card removed' });
   } else {
     // Orphaned — delete the task (cascades to card)
+    trackCommitmentTransition(card.taskId, card.listId, null);
+    const task = findTaskById(card.taskId);
+    if (task) trackTaskDeletion(task);
     deleteTask(card.taskId);
     broadcast('task:deleted', { _id: card.taskId });
     res.json({ message: 'Task deleted' });
@@ -126,6 +135,7 @@ router.patch('/:id/move', (req: Request, res: Response) => {
     makeRoom(targetListId, newOrder);
 
     const updated = updateCard(card._id, { listId: targetList._id, order: newOrder });
+    trackCommitmentTransition(card.taskId, card.listId, targetList._id);
     broadcast('card:moved', updated);
     res.json(updated);
   } else {
@@ -137,6 +147,7 @@ router.patch('/:id/move', (req: Request, res: Response) => {
     if (existingCard) {
       // Already in target section — remove source card
       closeGap(card.listId, card.order);
+      trackCommitmentTransition(card.taskId, card.listId, null);
       deleteCard(card._id);
       broadcast('card:deleted', { _id: card._id });
       res.json(existingCard);
@@ -144,12 +155,14 @@ router.patch('/:id/move', (req: Request, res: Response) => {
       // Duplicate card in target
       makeRoom(targetListId, newOrder);
       const newCard = insertCard({ taskId: card.taskId, listId: targetList._id, order: newOrder });
+      trackCommitmentTransition(card.taskId, null, targetList._id);
       broadcast('card:created', newCard);
 
       // If source is Inbox, remove source card (one-way out of Draft)
       const sourceSection = findSectionById(sourceList.sectionId);
       if (sourceSection && sourceSection.slug === 'inbox') {
         closeGap(card.listId, card.order);
+        trackCommitmentTransition(card.taskId, card.listId, null);
         deleteCard(card._id);
         broadcast('card:deleted', { _id: card._id });
       }

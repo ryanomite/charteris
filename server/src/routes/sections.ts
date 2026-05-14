@@ -6,6 +6,7 @@ import { findAllTasks, findTaskById, type TaskFilter } from '../queries/tasks';
 import { findAllLabels } from '../queries/labels';
 import { findGlobalSettings } from '../queries/settings';
 import type { Task } from '../types';
+import { trackCommitmentTransition } from '../utils/taskEventTracking';
 import { broadcast } from '../ws';
 
 const router = Router();
@@ -137,6 +138,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
   for (const card of bothListCards) {
     const task = findTaskById(card.taskId);
     if (task && (task.completed || task.archived)) {
+      trackCommitmentTransition(card.taskId, card.listId, null);
       deleteCard(card._id);
     }
   }
@@ -147,6 +149,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     const allTaskCards = findAllCards({ taskId: card.taskId });
     const hasOtherCards = allTaskCards.some(c => c.listId !== nextList._id);
     if (hasOtherCards) {
+      trackCommitmentTransition(card.taskId, card.listId, null);
       deleteCard(card._id);
     }
   }
@@ -156,6 +159,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
   for (const card of todayCardsAfterStep1) {
     const nextOrder = maxCardOrder(nextList._id) + 1;
     updateCard(card._id, { listId: nextList._id, order: nextOrder });
+    trackCommitmentTransition(card.taskId, todayList._id, nextList._id);
   }
 
   broadcast('cards:bulk-updated', { listIds: [todayList._id, nextList._id] });
@@ -229,7 +233,9 @@ router.post('/board/cast', (req: Request, res: Response) => {
       // Remove from Next if already there (same task can't be in both)
       const nextCard = nextCardByTaskId.get(task._id);
       if (nextCard) deleteCard(nextCard._id);
-      addedToday.push(insertCard({ taskId: task._id, listId: todayList._id }));
+      const inserted = insertCard({ taskId: task._id, listId: todayList._id });
+      trackCommitmentTransition(task._id, null, todayList._id);
+      addedToday.push(inserted);
     }
   }
 

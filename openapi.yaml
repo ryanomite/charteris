@@ -108,6 +108,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Subtask"
+        committedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time the task was committed into Today; reset to null when uncommitted.
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time the task was marked complete; reset to null when marked incomplete.
         createdAt:
           type: string
           format: date-time

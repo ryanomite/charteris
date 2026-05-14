@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { getDb, generateId, now } from '../db';
 import { broadcast } from '../ws';
+import { findTaskById } from '../queries/tasks';
+import { trackTaskDeletion } from '../utils/taskEventTracking';
 
 const router = Router();
 
@@ -100,6 +102,10 @@ router.post('/deduplicate', (_req: Request, res: Response) => {
       const normalized = normalizeTitle(row.title || '');
       if (!normalized) continue;
       if (seenTitles.has(normalized)) {
+        const task = findTaskById(row.id);
+        if (task) {
+          trackTaskDeletion(task);
+        }
         const cards = findTaskCardsStmt.all(row.id) as Array<{ listId: string }>;
         for (const c of cards) affectedListIds.add(c.listId);
         deleteTaskCards.run(row.id);

@@ -40,8 +40,31 @@ export interface Task {
   master: boolean;
   parentId: string | null;
   subtasks: Subtask[];
+  committedAt: string | null;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TaskEventType =
+  | 'task_committed'
+  | 'task_uncommitted'
+  | 'task_completed'
+  | 'task_uncompleted'
+  | 'task_deleted';
+
+export interface TaskEvent {
+  _id: string;
+  taskId: string;
+  eventType: TaskEventType;
+  occurredAt: string;
+  taskTitle: string;
+  taskPriority: number | null;
+  taskDueDate: string | null;
+  cabinetListId: string | null;
+  cabinetListName: string | null;
+  taskCompleted: boolean;
+  taskArchived: boolean;
 }
 
 export interface Card {

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import {
   findAllTasks, findTaskById, insertTask, updateTask, deleteTask,
-  propagateToSiblings, deleteTaskSeries, type TaskFilter,
+  propagateToSiblings, deleteTaskSeries, findTasksByParentId, type TaskFilter,
 } from '../queries/tasks';
 import { findAllCards, findCardById, deleteCard, insertCard } from '../queries/cards';
 import { findAllLists, findListById, insertList, maxListOrder } from '../queries/lists';
@@ -9,6 +9,7 @@ import { findSectionById, findSectionBySlug } from '../queries/sections';
 import { findLabelByName, insertLabel } from '../queries/labels';
 import { broadcast } from '../ws';
 import { normalizeName, parseTaskMacros } from '../utils/taskMacros';
+import { trackCommitmentTransition, trackCompletionTransition, trackTaskDeletion } from '../utils/taskEventTracking';
 
 const router = Router();
 
@@ -131,6 +132,7 @@ router.post('/', (req: Request, res: Response) => {
     master: master || false,
     parentId: parentId || null,
     subtasks: subtasks || [],
+    completedAt: completed ? new Date().toISOString() : null,
   });
 
   for (const targetId of targetListIds) {
@@ -168,6 +170,8 @@ router.put('/:id', (req: Request, res: Response) => {
   const updated = updateTask(task._id, updateData as any);
   if (!updated) { res.status(404).json({ error: 'Task not found' }); return; }
 
+  trackCompletionTransition(task, updated);
+
   if (updated.parentId && Object.keys(propagateData).length > 0) {
     propagateToSiblings(updated, propagateData);
   }
@@ -190,6 +194,7 @@ router.delete('/:id', (req: Request, res: Response) => {
         const allTaskCards = findAllCards({ taskId: task._id });
         const otherCards = allTaskCards.filter(c => c._id !== card._id);
         if (otherCards.length > 0) {
+          trackCommitmentTransition(task._id, card.listId, null);
           deleteCard(card._id);
           broadcast('card:deleted', { _id: card._id });
           res.json({ message: 'Card removed' });
@@ -198,6 +203,12 @@ router.delete('/:id', (req: Request, res: Response) => {
       }
     }
   }
+
+  const taskCards = findAllCards({ taskId: task._id });
+  for (const card of taskCards) {
+    trackCommitmentTransition(task._id, card.listId, null);
+  }
+  trackTaskDeletion(task);
 
   deleteTask(task._id);
   broadcast('task:deleted', { _id: task._id });
@@ -209,6 +220,9 @@ router.patch('/:id/complete', (req: Request, res: Response) => {
   if (!task) { res.status(404).json({ error: 'Task not found' }); return; }
 
   const updated = updateTask(task._id, { completed: !task.completed });
+  if (updated) {
+    trackCompletionTransition(task, updated);
+  }
   broadcast('task:updated', updated);
   res.json(updated);
 });
@@ -229,6 +243,15 @@ router.delete('/:id/series', (req: Request, res: Response) => {
   if (!task.parentId) {
     res.status(400).json({ error: 'Task is not part of a series' });
     return;
+  }
+
+  const seriesTasks = findTasksByParentId(task.parentId);
+  for (const seriesTask of seriesTasks) {
+    const cards = findAllCards({ taskId: seriesTask._id });
+    for (const card of cards) {
+      trackCommitmentTransition(seriesTask._id, card.listId, null);
+    }
+    trackTaskDeletion(seriesTask);
   }
 
   const { deletedCount, taskIds } = deleteTaskSeries(task.parentId);
