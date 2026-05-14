@@ -3,12 +3,12 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { computeNextDueDate, handleRecurringCompletion } from '../composables/useRecurrence';
 import { parseTaskMacros } from '../utils/taskMacros';
-import { resolveLabelIds, findTodayList, findNextList, ensureCabinetList, addCardIfMissing } from '../utils/taskHelpers';
+import { resolveLabelIds, findTodayList, findNextList, ensureCabinetList, addCardIfMissing, normalizeLabelName } from '../utils/taskHelpers';
 import api from '../services/api';
 import type { ICard, ITask, ILabel, ISubtask } from '../types';
 
 const props = defineProps<{ card: ICard | null }>();
-const emit = defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{ (e: 'close'): void; (e: 'open', card: ICard): void }>();
 
 const store = useTaskStore();
 
@@ -65,9 +65,72 @@ const labelObjects = computed(() =>
     .filter((l): l is ILabel => l != null)
 );
 
+function labelDraftName(): string {
+  return normalizeLabelName(labelSearch.value);
+}
+
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function setDueToday() {
+  dueDate.value = formatLocalDate(new Date());
+}
+
+function setDueTomorrow() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  dueDate.value = formatLocalDate(d);
+}
+
+function clearDueDate() {
+  dueDate.value = '';
+}
+
+async function followUp() {
+  if (!task.value || !props.card) return;
+  try {
+    if (!task.value.completed) {
+      const { data: completed } = await api.patch(`/tasks/${task.value._id}/complete`);
+      store.upsertTask(completed);
+    }
+
+    const followTitle = task.value.title.startsWith('F/U ') ? task.value.title : `F/U ${task.value.title}`;
+    const payload: Record<string, unknown> = {
+      title: followTitle,
+      description: task.value.description,
+      priority: task.value.priority,
+      labels: task.value.labels,
+      dueDate: null,
+      recurrence: task.value.recurrence,
+      completed: false,
+      archived: false,
+      master: task.value.master,
+      parentId: task.value.parentId,
+      subtasks: task.value.subtasks.map(s => ({ title: s.title, completed: false })),
+      listId: props.card.listId,
+    };
+
+    const { data: newTask } = await api.post('/tasks', payload);
+    store.upsertTask(newTask);
+    await store.refreshListCards([props.card.listId]);
+    const newCard = store.cards.find(c => c.taskId === newTask._id && c.listId === props.card!.listId);
+
+    emit('close');
+    if (newCard) {
+      emit('open', newCard);
+    }
+  } catch (err) {
+    console.error('Follow-up failed:', err);
+  }
+}
+
 const filteredLabels = computed(() =>
   store.labels.filter(l =>
-    l.name.toLowerCase().includes(labelSearch.value.toLowerCase()) &&
+    l.name.toLowerCase().includes(labelDraftName().toLowerCase()) &&
     !taskLabels.value.includes(l._id)
   )
 );
@@ -81,12 +144,17 @@ function addLabel(labelId: string) {
 }
 
 async function createAndAddLabel() {
-  const name = labelSearch.value.trim();
+  const name = labelDraftName();
   if (!name) return;
   try {
-    const { data } = await api.post('/labels', { name });
-    store.upsertLabel(data);
-    taskLabels.value.push(data._id);
+    const existing = store.labels.find(l => l.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      taskLabels.value.push(existing._id);
+    } else {
+      const { data } = await api.post('/labels', { name });
+      store.upsertLabel(data);
+      taskLabels.value.push(data._id);
+    }
     labelSearch.value = '';
     showLabelDropdown.value = false;
   } catch (err) {
@@ -246,14 +314,20 @@ function onOverlayClick(e: MouseEvent) {
         <div class="modal__body">
           <!-- Completion toggle -->
           <div class="modal__row">
-            <button
-              class="modal__toggle"
-              :class="{ 'modal__toggle--done': task.completed }"
-              @click="toggleComplete"
-            >
-              <i :class="['fas', task.completed ? 'fa-check-circle' : 'fa-circle']"></i>
-              <span>{{ task.completed ? 'Completed' : 'Mark complete' }}</span>
-            </button>
+            <div class="modal__toggle-row">
+              <button
+                class="modal__toggle"
+                :class="{ 'modal__toggle--done': task.completed }"
+                @click="toggleComplete"
+              >
+                <i :class="['fas', task.completed ? 'fa-check-circle' : 'fa-circle']"></i>
+                <span>{{ task.completed ? 'Completed' : 'Mark complete' }}</span>
+              </button>
+              <button class="modal__btn modal__btn--followup" @click="followUp">
+                <i class="fas fa-reply"></i>
+                Follow-up
+              </button>
+            </div>
           </div>
 
           <!-- Priority -->
@@ -305,11 +379,11 @@ function onOverlayClick(e: MouseEvent) {
                     {{ lbl.name }}
                   </button>
                   <button
-                    v-if="labelSearch.trim() && !filteredLabels.find(l => l.name.toLowerCase() === labelSearch.toLowerCase())"
+                    v-if="labelDraftName() && !filteredLabels.find(l => l.name.toLowerCase() === labelDraftName().toLowerCase())"
                     class="label-dropdown__item label-dropdown__create"
                     @mousedown.prevent="createAndAddLabel()"
                   >
-                    Create "{{ labelSearch.trim() }}"
+                    Create "{{ labelDraftName() }}"
                   </button>
                 </div>
               </div>
@@ -319,11 +393,16 @@ function onOverlayClick(e: MouseEvent) {
           <!-- Due Date -->
           <div class="modal__row">
             <label class="modal__label">Due Date</label>
-            <input
-              v-model="dueDate"
-              type="date"
-              class="modal__date"
-            />
+            <div class="modal__date-row">
+              <input
+                v-model="dueDate"
+                type="date"
+                class="modal__date"
+              />
+              <button type="button" class="modal__date-shortcut" @click="setDueToday">Today</button>
+              <button type="button" class="modal__date-shortcut" @click="setDueTomorrow">Tomorrow</button>
+              <button type="button" class="modal__date-shortcut" @click="clearDueDate">Clear</button>
+            </div>
           </div>
 
           <!-- Recurrence -->
@@ -523,6 +602,13 @@ function onOverlayClick(e: MouseEvent) {
 .modal__toggle:hover { color: var(--text-primary); }
 .modal__toggle--done { color: #4CAF50; }
 
+.modal__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* Priority */
 .modal__priority {
   display: flex;
@@ -645,6 +731,27 @@ function onOverlayClick(e: MouseEvent) {
 
 .modal__date:focus {
   border-color: var(--accent);
+}
+
+.modal__date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.modal__date-shortcut {
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  transition: background var(--transition-default), color var(--transition-default);
+}
+
+.modal__date-shortcut:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
 }
 
 /* Recurrence */
@@ -807,6 +914,16 @@ function onOverlayClick(e: MouseEvent) {
 .modal__btn--archive:hover {
   background: rgba(252, 191, 73, 0.15);
   color: var(--priority-3);
+}
+
+.modal__btn--followup {
+  margin-left: auto;
+  color: var(--text-primary);
+  background: rgba(87, 140, 183, 0.25);
+}
+
+.modal__btn--followup:hover {
+  background: rgba(87, 140, 183, 0.38);
 }
 
 .modal__btn--primary {

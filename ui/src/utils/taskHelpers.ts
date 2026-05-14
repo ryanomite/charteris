@@ -3,10 +3,14 @@ import type { IList } from '../types';
 import { useTaskStore } from '../stores/taskStore';
 import { toClassSlug } from './classNames';
 
+export function normalizeLabelName(raw: string): string {
+  return raw.trim().replace(/^@+/, '').trim();
+}
+
 export async function resolveLabelIds(store: ReturnType<typeof useTaskStore>, names: string[]): Promise<string[]> {
   const ids: string[] = [];
   for (const rawName of names) {
-    const name = rawName.trim();
+    const name = normalizeLabelName(rawName);
     if (!name) continue;
     let label = store.labels.find(l => l.name.toLowerCase() === name.toLowerCase());
     if (!label) {

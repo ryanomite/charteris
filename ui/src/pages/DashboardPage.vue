@@ -168,7 +168,7 @@ onUnmounted(() => {
     @open-import="openImport"
     @open-global-settings="openGlobalSettings"
   />
-  <TaskEditModal :card="editingCard" @close="editingCard = null" />
+  <TaskEditModal :card="editingCard" @close="editingCard = null" @open="openCard" />
   <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />
   <GlobalSettingsModal :open="globalSettingsOpen" @close="closeGlobalSettings" />
 </template>

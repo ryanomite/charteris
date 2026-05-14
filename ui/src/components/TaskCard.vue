@@ -90,8 +90,8 @@ const cardSemanticClasses = computed(() => {
 const actionArrow = computed(() => {
   if (!task.value) return null;
   if (props.sectionSlug === 'board') {
-    // Cabinet: show left arrow to add to Today (if not already in a planning list)
-    return 'left';
+    // Cabinet: if already committed, allow uncommitting. Otherwise commit to Today.
+    return isCommittedInPlanning.value ? 'right' : 'left';
   }
   if (props.sectionSlug === 'planning') {
     // Briefing: show right arrow if task has a card in the Cabinet (non-orphaned)
@@ -135,7 +135,7 @@ async function toggleComplete(e: MouseEvent) {
 async function onActionClick(e: MouseEvent) {
   e.stopPropagation();
   if (!task.value) return;
-  if (actionArrow.value === 'left') {
+  if (props.sectionSlug === 'board' && actionArrow.value === 'left') {
     // Add to Today
     const planningSection = store.sections.find(s => s.slug === 'planning');
     if (!planningSection) return;
@@ -149,6 +149,21 @@ async function onActionClick(e: MouseEvent) {
       store.upsertCard(data);
     } catch (err) {
       console.error('Add to Today failed:', err);
+    }
+  } else if (props.sectionSlug === 'board' && actionArrow.value === 'right') {
+    // Uncommit: remove this task from Today/Next if present
+    const planningSection = store.sections.find(s => s.slug === 'planning');
+    if (!planningSection) return;
+    const planningListIds = store.listsForSection(planningSection._id)
+      .filter(l => ['Today', 'Next'].includes(l.name))
+      .map(l => l._id);
+    const planningCards = store.cards.filter(c => c.taskId === task.value!._id && planningListIds.includes(c.listId));
+    if (!planningCards.length) return;
+    try {
+      await Promise.all(planningCards.map(c => api.delete(`/cards/${c._id}`)));
+      planningCards.forEach(c => store.removeCard(c._id));
+    } catch (err) {
+      console.error('Uncommit failed:', err);
     }
   } else if (actionArrow.value === 'right') {
     // Remove from the Briefing list this card is in
@@ -214,7 +229,9 @@ async function onActionClick(e: MouseEvent) {
     <div v-if="actionArrow" class="card__hover-right">
       <button
         class="card__action"
-        :title="actionArrow === 'left' ? 'Add to Today' : 'Remove from Counter'"
+        :title="props.sectionSlug === 'board'
+          ? (actionArrow === 'left' ? 'Add to Today' : 'Remove from Today/Next')
+          : 'Remove from Counter'"
         @click="onActionClick"
       >
         <i :class="['fas', actionArrow === 'left' ? 'fa-arrow-left' : 'fa-arrow-right']"></i>
