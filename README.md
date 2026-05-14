@@ -98,6 +98,18 @@ Tasks are the core unit of work. A task can appear in multiple lists across diff
 - Drag tasks between lists to reorganize
 - Tasks show priority indicators, due dates, and completion status
 
+### Priority Guide
+
+Priority guides what you should commit to, but does not auto-commit work. You still choose what enters Today and Next.
+
+If there is a real external expectation or deadline, the task should generally be P1-P3.
+
+- **P1 — Commit today:** work that should be done today; urgent external commitments usually belong here.
+- **P2 — Next up, very important:** high priority and likely next in line; okay to slip a day.
+- **P3 — Important, time-bounded, but flexible:** should be done soon; moderate slip is acceptable.
+- **P4 — Internal priority, no near-term external pressure:** matters more than "someday" but has no immediate outside expectation.
+- **P5 — Rainy Day:** optional/nice-to-have backlog work with low urgency and flexible timing.
+
 ### Keyboard Shortcuts
 
 | Key | Action |

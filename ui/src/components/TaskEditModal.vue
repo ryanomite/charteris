@@ -345,6 +345,16 @@ function onOverlayClick(e: MouseEvent) {
                 {{ p === 5 ? 'R' : p }}
               </button>
             </div>
+            <details class="modal__priority-help">
+              <summary>Priority quick guide</summary>
+              <ul>
+                <li><strong>P1:</strong> Do today; urgent external commitments.</li>
+                <li><strong>P2:</strong> Very important and next up; short slip okay.</li>
+                <li><strong>P3:</strong> Important soon; moderate slip okay; can still be external.</li>
+                <li><strong>P4:</strong> Internal priority; no near-term external pressure.</li>
+                <li><strong>P5:</strong> Rainy-day / nice-to-have; no external urgency.</li>
+              </ul>
+            </details>
           </div>
 
           <!-- Labels -->
@@ -635,6 +645,28 @@ function onOverlayClick(e: MouseEvent) {
   border-color: var(--pc);
   color: var(--pc);
   background: rgba(255, 255, 255, 0.1);
+}
+
+.modal__priority-help {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.modal__priority-help summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.modal__priority-help ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Labels */
