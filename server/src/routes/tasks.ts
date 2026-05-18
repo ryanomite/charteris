@@ -197,9 +197,9 @@ router.put('/:id', (req: Request, res: Response) => {
 
   trackCompletionTransition(task, updated);
 
-  // Sync Today card membership based on due-date edits.
+  // Sync Counter list placement based on due-date edits.
   // - If due date becomes today: ensure a Today card exists.
-  // - If due date becomes non-today: remove Today card only when task is unorphaned.
+  // - If due date becomes non-today and task is in Today: move Today -> Next.
   if (req.body.dueDate !== undefined) {
     const planningSection = findSectionBySlug('planning');
     const todayList = planningSection
@@ -220,8 +220,15 @@ router.put('/:id', (req: Request, res: Response) => {
       }
 
       if (!isDueToday && todayCard) {
-        const hasOtherCards = taskCards.some(c => c.listId !== todayList._id);
-        if (hasOtherCards) {
+        const nextList = findAllLists({ sectionId: todayList.sectionId }).find(l => l.name === 'Next');
+        if (nextList) {
+          const nextCard = taskCards.find(c => c.listId === nextList._id);
+          if (!nextCard) {
+            const createdNextCard = insertCard({ taskId: updated._id, listId: nextList._id });
+            trackCommitmentTransition(updated._id, null, nextList._id);
+            broadcast('card:created', createdNextCard);
+          }
+
           deleteCard(todayCard._id);
           trackCommitmentTransition(updated._id, todayList._id, null);
           broadcast('card:deleted', { _id: todayCard._id });
