@@ -106,10 +106,27 @@ const actionArrow = computed(() => {
   return null;
 });
 
+const shouldBeCondensed = computed(() => {
+  return task.value?.priority === 5 && store.globalSettings.hideRainyDayCards !== false;
+});
+
+const priorityClass = computed(() => {
+  return `priority-${task.value?.priority ?? 'none'}`;
+});
+
 function onMouseEnter() { hoveredCardId.value = props.card._id; }
 function onMouseLeave() { if (hoveredCardId.value === props.card._id) hoveredCardId.value = null; }
 
 function onClick(e: MouseEvent) {
+  // If this card is condensed, expand all cards in this list instead of opening the card
+  if (shouldBeCondensed.value && (e.target as HTMLElement).closest('.card')?.classList.contains('condensed')) {
+    const cardElements = document.querySelectorAll(`.card[data-list-id="${props.card.listId}"].condensed`);
+    cardElements.forEach(el => {
+      el.classList.remove('condensed');
+    });
+    return;
+  }
+
   if (e.ctrlKey || e.metaKey || e.shiftKey) {
     selectCard(props.card._id, { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
   } else {
@@ -191,9 +208,12 @@ async function onActionClick(e: MouseEvent) {
         'card--due-today': dueStatus === 'due-today',
         'card--due-tomorrow': dueStatus === 'due-tomorrow',
         'card--board-committed': isCommittedInPlanning,
+        'condensed': shouldBeCondensed,
       },
       cardSemanticClasses,
+      priorityClass,
     ]"
+    :data-list-id="card.listId"
     :style="{ borderLeftColor: priorityColor }"
     v-if="task"
     draggable="true"
@@ -291,6 +311,21 @@ async function onActionClick(e: MouseEvent) {
 
 .card--board-committed:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.card.condensed {
+  height: 1px;
+  overflow: hidden;
+  padding: 0;
+}
+
+.card.condensed .card__body {
+  display: none;
+}
+
+.card.condensed .card__hover-left,
+.card.condensed .card__hover-right {
+  display: none;
 }
 
 .card__tags {
