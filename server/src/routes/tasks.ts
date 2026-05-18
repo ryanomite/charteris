@@ -200,7 +200,9 @@ router.put('/:id', (req: Request, res: Response) => {
   // Sync Counter list placement based on due-date edits.
   // - If due date becomes today: ensure a Today card exists.
   // - If due date becomes non-today and task is in Today: move Today -> Next.
-  if (req.body.dueDate !== undefined) {
+  // - Clearing due date should not affect list placement.
+  const hasConcreteDueDate = typeof req.body.dueDate === 'string' && req.body.dueDate.trim().length > 0;
+  if (hasConcreteDueDate) {
     const planningSection = findSectionBySlug('planning');
     const todayList = planningSection
       ? findAllLists({ sectionId: planningSection._id }).find(l => l.name === 'Today')
