@@ -197,28 +197,34 @@ router.put('/:id', (req: Request, res: Response) => {
 
   trackCompletionTransition(task, updated);
 
-  // If due date changed to non-today and task is in Today, move to Next
-  if (req.body.dueDate !== undefined && req.body.dueDate !== null) {
-    const todayList = findAllLists({ sectionId: findSectionBySlug('planning')?._id }).find(l => l.name === 'Today');
+  // Sync Today card membership based on due-date edits.
+  // - If due date becomes today: ensure a Today card exists.
+  // - If due date becomes non-today: remove Today card only when task is unorphaned.
+  if (req.body.dueDate !== undefined) {
+    const planningSection = findSectionBySlug('planning');
+    const todayList = planningSection
+      ? findAllLists({ sectionId: planningSection._id }).find(l => l.name === 'Today')
+      : null;
+
     if (todayList) {
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const isToday = updated.dueDate === todayStr;
-      if (!isToday) {
-        const todayCard = findAllCards({ taskId: updated._id }).find(c => c.listId === todayList._id);
-        if (todayCard) {
-          const nextList = findAllLists({ sectionId: todayList.sectionId }).find(l => l.name === 'Next');
-          if (nextList) {
-            // Remove from Today
-            deleteCard(todayCard._id);
-            trackCommitmentTransition(updated._id, todayList._id, null);
-            // Add to Next if not already there
-            const nextCard = findAllCards({ taskId: updated._id }).find(c => c.listId === nextList._id);
-            if (!nextCard) {
-              insertCard({ taskId: updated._id, listId: nextList._id });
-              trackCommitmentTransition(updated._id, null, nextList._id);
-            }
-          }
+      const isDueToday = updated.dueDate === todayStr;
+      const taskCards = findAllCards({ taskId: updated._id });
+      const todayCard = taskCards.find(c => c.listId === todayList._id);
+
+      if (isDueToday && !todayCard) {
+        const createdTodayCard = insertCard({ taskId: updated._id, listId: todayList._id });
+        trackCommitmentTransition(updated._id, null, todayList._id);
+        broadcast('card:created', createdTodayCard);
+      }
+
+      if (!isDueToday && todayCard) {
+        const hasOtherCards = taskCards.some(c => c.listId !== todayList._id);
+        if (hasOtherCards) {
+          deleteCard(todayCard._id);
+          trackCommitmentTransition(updated._id, todayList._id, null);
+          broadcast('card:deleted', { _id: todayCard._id });
         }
       }
     }
