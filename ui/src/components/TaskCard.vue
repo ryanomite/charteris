@@ -314,7 +314,7 @@ async function onActionClick(e: MouseEvent) {
 }
 
 .card.condensed {
-  height: 1px;
+  height: 10px;
   overflow: hidden;
   padding: 0;
 }

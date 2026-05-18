@@ -585,7 +585,7 @@ function openImportForList() {
 .list__add {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   padding: 10px 12px;
   color: var(--text-secondary);
   font-size: 0.8125rem;
