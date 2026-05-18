@@ -143,7 +143,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     }
   }
 
-  // Step 2: Remove non-orphaned cards from Next
+  // Step 2: Remove non-orphaned cards from both Today and Next
   const nextCardsAfterStep1 = findAllCards({ listId: nextList._id });
   for (const card of nextCardsAfterStep1) {
     const allTaskCards = findAllCards({ taskId: card.taskId });
@@ -154,9 +154,19 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     }
   }
 
-  // Step 3: Move all remaining Today cards to Next
   const todayCardsAfterStep1 = findAllCards({ listId: todayList._id });
   for (const card of todayCardsAfterStep1) {
+    const allTaskCards = findAllCards({ taskId: card.taskId });
+    const hasOtherCards = allTaskCards.some(c => c.listId !== todayList._id);
+    if (hasOtherCards) {
+      trackCommitmentTransition(card.taskId, card.listId, null);
+      deleteCard(card._id);
+    }
+  }
+
+  // Step 3: Move all remaining Today cards to Next
+  const todayCardsAfterStep2 = findAllCards({ listId: todayList._id });
+  for (const card of todayCardsAfterStep2) {
     const nextOrder = maxCardOrder(nextList._id) + 1;
     updateCard(card._id, { listId: nextList._id, order: nextOrder });
     trackCommitmentTransition(card.taskId, todayList._id, nextList._id);

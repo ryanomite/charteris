@@ -102,7 +102,11 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
     // Q shortcut: quick add card (works without selection)
     if (e.key === 'q' || e.key === 'Q') {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('charteris:quick-add'));
+      if (store.lastInteractedListId.value) {
+        window.dispatchEvent(new CustomEvent('charteris:quick-add', { detail: { listId: store.lastInteractedListId.value } }));
+      } else {
+        window.dispatchEvent(new CustomEvent('charteris:quick-add-modal'));
+      }
       return;
     }
 

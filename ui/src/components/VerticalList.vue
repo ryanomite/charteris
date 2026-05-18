@@ -163,8 +163,11 @@ function onMouseLeave() {
   }
 }
 
-function handleQuickAdd() {
-  if (hoveredListId.value === props.list._id || (!hoveredListId.value && props.list.name === 'Draft')) {
+function handleQuickAdd(e: Event) {
+  const detail = (e as CustomEvent).detail;
+  const targetListId = detail?.listId;
+  
+  if (targetListId === props.list._id || (!targetListId && (hoveredListId.value === props.list._id || (!hoveredListId.value && props.list.name === 'Draft')))) {
     startAdding();
   }
 }

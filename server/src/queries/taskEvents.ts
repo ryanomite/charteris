@@ -63,6 +63,23 @@ export function insertTaskEvent(task: Task, eventType: TaskEventType, occurredAt
     task.archived ? 1 : 0,
   );
 
+  // Stale commitment cleanup: if this is an uncommit event, check if the most recent commit was < 1 hour ago
+  if (eventType === 'task_uncommitted') {
+    const oneHourAgo = new Date(new Date(occurredAt).getTime() - 60 * 60 * 1000).toISOString();
+    const recentCommit = getDb().prepare(`
+      SELECT id, occurredAt FROM task_events
+      WHERE taskId = ? AND eventType = 'task_committed' AND occurredAt > ?
+      ORDER BY occurredAt DESC
+      LIMIT 1
+    `).get(task._id, oneHourAgo) as { id: string; occurredAt: string } | undefined;
+
+    if (recentCommit) {
+      // Remove both the commit and uncommit events to avoid stat noise
+      getDb().prepare('DELETE FROM task_events WHERE id = ?').run(recentCommit.id);
+      getDb().prepare('DELETE FROM task_events WHERE id = ?').run(id);
+    }
+  }
+
   return findTaskEventById(id)!;
 }
 

@@ -24,6 +24,7 @@ const dueDate = ref('');
 const recurrence = ref('');
 const subtasks = ref<ISubtask[]>([]);
 const taskLabels = ref<string[]>([]);
+const selectedListId = ref<string | null>(null);
 const showDeleteConfirm = ref(false);
 const showSeriesDeleteConfirm = ref(false);
 const labelSearch = ref('');
@@ -65,6 +66,23 @@ const labelObjects = computed(() =>
     .filter((l): l is ILabel => l != null)
 );
 
+const availableLists = computed(() => {
+  // Return all lists from Counter (Planning/Briefing) and Cabinet (Board) sections
+  const results: Array<{ _id: string; name: string; sectionName: string; sectionSlug: string }> = [];
+  for (const list of store.lists) {
+    const section = store.sections.find(s => s._id === list.sectionId);
+    if (!list.archived && section && (section.slug === 'planning' || section.slug === 'board')) {
+      results.push({
+        _id: list._id,
+        name: list.name,
+        sectionName: section.name,
+        sectionSlug: section.slug,
+      });
+    }
+  }
+  return results;
+});
+
 function labelDraftName(): string {
   return normalizeLabelName(labelSearch.value);
 }
@@ -99,6 +117,16 @@ async function followUp() {
     }
 
     const followTitle = task.value.title.startsWith('F/U ') ? task.value.title : `F/U ${task.value.title}`;
+    
+    // Determine target list for follow-up task
+    let selectListId: string | undefined;
+    const currentList = store.lists.find(l => l._id === props.card!.listId);
+    if (currentList && currentList.name === 'Today') {
+      // If current task is in Today, move follow-up to Next
+      const nextList = store.lists.find(l => l.name === 'Next');
+      if (nextList) selectListId = nextList._id;
+    }
+
     const payload: Record<string, unknown> = {
       title: followTitle,
       description: task.value.description,
@@ -111,13 +139,26 @@ async function followUp() {
       master: task.value.master,
       parentId: task.value.parentId,
       subtasks: task.value.subtasks.map(s => ({ title: s.title, completed: false })),
-      listId: props.card.listId,
     };
+
+    // Use selectListId if determined, otherwise use current list
+    if (selectListId) {
+      payload.selectListId = selectListId;
+    } else {
+      payload.listId = props.card.listId;
+    }
 
     const { data: newTask } = await api.post('/tasks', payload);
     store.upsertTask(newTask);
-    await store.refreshListCards([props.card.listId]);
-    const newCard = store.cards.find(c => c.taskId === newTask._id && c.listId === props.card!.listId);
+    
+    // Refresh both the original and new task's lists
+    const refreshListIds = [props.card.listId];
+    if (selectListId && selectListId !== props.card.listId) {
+      refreshListIds.push(selectListId);
+    }
+    await store.refreshListCards(refreshListIds);
+    
+    const newCard = store.cards.find(c => c.taskId === newTask._id && (selectListId ? c.listId === selectListId : c.listId === props.card!.listId));
 
     emit('close');
     if (newCard) {
@@ -233,6 +274,42 @@ async function save() {
       const nextList = findNextList(store);
       if (nextList) {
         await addCardIfMissing(store, task.value._id, nextList._id);
+      }
+    }
+
+    // Handle list selector if user chose one
+    if (selectedListId.value && props.card) {
+      const selectedList = store.lists.find(l => l._id === selectedListId.value);
+      const selectedSection = selectedList ? store.sections.find(s => s._id === selectedList.sectionId) : null;
+
+      if (selectedSection?.slug === 'board') {
+        // Cabinet list: move to that list
+        const allTaskCards = store.cards.filter(c => c.taskId === task.value._id);
+        for (const card of allTaskCards) {
+          const cardList = store.lists.find(l => l._id === card.listId);
+          const cardSection = cardList ? store.sections.find(s => s._id === cardList.sectionId) : null;
+          if (cardSection?.slug === 'board' && card.listId !== selectedList._id) {
+            await api.patch(`/cards/${card._id}/move`, { targetListId: selectedList._id });
+          }
+        }
+        await store.refreshListCards([selectedList._id]);
+      } else if (selectedSection?.slug === 'planning' && selectedList) {
+        // Counter list: add to selected, remove from the other Counter list
+        const todayList = findTodayList(store);
+        const nextList = findNextList(store);
+        const isToday = selectedList.name === 'Today';
+        const otherCounterList = isToday ? nextList : todayList;
+
+        // Remove from other Counter list
+        if (otherCounterList) {
+          const otherCard = store.cards.find(c => c.taskId === task.value._id && c.listId === otherCounterList._id);
+          if (otherCard) {
+            await api.delete(`/cards/${otherCard._id}`);
+          }
+        }
+
+        // Add to selected Counter list
+        await addCardIfMissing(store, task.value._id, selectedList._id);
       }
     }
 
@@ -355,6 +432,32 @@ function onOverlayClick(e: MouseEvent) {
                 <li><strong>P5:</strong> Rainy-day / nice-to-have; no external urgency.</li>
               </ul>
             </details>
+          </div>
+
+          <!-- List Selector -->
+          <div class="modal__row">
+            <label class="modal__label">List (optional)</label>
+            <select v-model="selectedListId" class="modal__select">
+              <option :value="null">— No change —</option>
+              <optgroup label="Counter" v-if="availableLists.some(l => l.sectionSlug === 'planning')">
+                <option
+                  v-for="list in availableLists.filter(l => l.sectionSlug === 'planning')"
+                  :key="list._id"
+                  :value="list._id"
+                >
+                  {{ list.name }}
+                </option>
+              </optgroup>
+              <optgroup label="Cabinet" v-if="availableLists.some(l => l.sectionSlug === 'board')">
+                <option
+                  v-for="list in availableLists.filter(l => l.sectionSlug === 'board')"
+                  :key="list._id"
+                  :value="list._id"
+                >
+                  {{ list.name }}
+                </option>
+              </optgroup>
+            </select>
           </div>
 
           <!-- Labels -->
@@ -783,6 +886,31 @@ function onOverlayClick(e: MouseEvent) {
 
 .modal__date-shortcut:hover {
   background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+/* List Selector */
+.modal__select {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  outline: none;
+  width: 100%;
+}
+
+.modal__select:focus {
+  border-color: var(--accent);
+}
+
+.modal__select optgroup {
+  color: var(--text-secondary);
+}
+
+.modal__select option {
+  background: #1a1a1a;
   color: var(--text-primary);
 }
 

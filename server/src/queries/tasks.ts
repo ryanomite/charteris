@@ -193,10 +193,22 @@ export function updateTask(id: string, data: UpdateTaskData): Task | null {
 
   // Labels — full replace
   if (data.labels !== undefined) {
+    // Get old labels to clean up orphaned ones
+    const oldLabels = getTaskLabels(id);
+    const removedLabels = oldLabels.filter(lid => !data.labels.includes(lid));
+    
     db.prepare('DELETE FROM task_labels WHERE taskId = ?').run(id);
     const insertLabel = db.prepare('INSERT OR IGNORE INTO task_labels (taskId, labelId) VALUES (?, ?)');
     for (const labelId of data.labels) {
       insertLabel.run(id, labelId);
+    }
+    
+    // Clean up orphaned labels
+    for (const labelId of removedLabels) {
+      const usage = db.prepare('SELECT COUNT(*) as cnt FROM task_labels WHERE labelId = ?').get(labelId) as { cnt: number };
+      if (usage.cnt === 0) {
+        db.prepare('DELETE FROM labels WHERE id = ?').run(labelId);
+      }
     }
   }
 

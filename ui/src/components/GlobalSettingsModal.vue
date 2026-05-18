@@ -11,6 +11,7 @@ const saving = ref(false);
 const deduping = ref(false);
 const error = ref('');
 const hideCommittedCards = ref(false);
+const hideRainyDayCards = ref(false);
 const castingRulesToday = ref('');
 const castingRulesNext = ref('');
 const cssOverrides = ref('');
@@ -89,6 +90,11 @@ function close() {
           <label class="setting-row">
             <input type="checkbox" v-model="hideCommittedCards" />
             <span>Hide committed cards in Cabinet</span>
+          </label>
+
+          <label class="setting-row">
+            <input type="checkbox" v-model="hideRainyDayCards" />
+            <span>Hide rainy day cards (non-persistent)</span>
           </label>
 
           <div class="setting-block">

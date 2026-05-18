@@ -20,6 +20,7 @@ export const useTaskStore = defineStore('tasks', () => {
   const loading = ref(false);
   const showArchived = ref(false);
   const showArchivedLists = ref(false);
+  const lastInteractedListId = ref<string | null>(null);
 
   // Fetch full dashboard state
   async function fetchDashboard() {
@@ -212,8 +213,12 @@ export const useTaskStore = defineStore('tasks', () => {
     }
   }
 
+  function setLastInteractedListId(listId: string | null) {
+    lastInteractedListId.value = listId;
+  }
+
   return {
-    sections, lists, tasks, cards, labels, globalSettings, loading, showArchived, showArchivedLists,
+    sections, lists, tasks, cards, labels, globalSettings, loading, showArchived, showArchivedLists, lastInteractedListId,
     sortedSections, fetchDashboard,
     fetchGlobalSettings, updateGlobalSettings, applyGlobalSettings,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
@@ -225,5 +230,6 @@ export const useTaskStore = defineStore('tasks', () => {
     upsertLabel, removeLabel,
     refreshListCards, refreshSectionLists,
     archiveAllCompleted,
+    setLastInteractedListId,
   };
 });

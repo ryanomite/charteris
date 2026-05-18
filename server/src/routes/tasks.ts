@@ -45,6 +45,7 @@ router.post('/', (req: Request, res: Response) => {
     subtasks,
     applyMacros,
     listId,
+    selectListId,
   } = req.body || {};
 
   if (!title || typeof title !== 'string') {
@@ -111,6 +112,30 @@ router.post('/', (req: Request, res: Response) => {
     targetListIds.add(nextList._id);
   }
 
+  // Handle selectListId: explicit list selection from user
+  if (typeof selectListId === 'string' && selectListId.trim()) {
+    const selectedList = findListById(selectListId);
+    if (!selectedList) {
+      res.status(400).json({ error: 'selectListId is invalid' });
+      return;
+    }
+    const selectedSection = findSectionById(selectedList.sectionId);
+    if (selectedSection?.slug === 'board') {
+      // Cabinet list: move to that list only
+      targetListIds.clear();
+      targetListIds.add(selectedList._id);
+    } else if (selectedSection?.slug === 'planning') {
+      // Counter list (Today/Next): add to that list, remove from the other
+      if (selectedList.name.toLowerCase() === 'today') {
+        targetListIds.delete(nextList?._id || '');
+        if (todayList) targetListIds.add(todayList._id);
+      } else if (selectedList.name.toLowerCase() === 'next') {
+        targetListIds.delete(todayList?._id || '');
+        if (nextList) targetListIds.add(nextList._id);
+      }
+    }
+  }
+
   // Ensure tasks created through the API are visible by default.
   if (targetListIds.size === 0) {
     if (!todayList) {
@@ -171,6 +196,33 @@ router.put('/:id', (req: Request, res: Response) => {
   if (!updated) { res.status(404).json({ error: 'Task not found' }); return; }
 
   trackCompletionTransition(task, updated);
+
+  // If due date changed to non-today and task is in Today, move to Next
+  if (req.body.dueDate !== undefined && req.body.dueDate !== null) {
+    const todayList = findAllLists({ sectionId: findSectionBySlug('planning')?._id }).find(l => l.name === 'Today');
+    if (todayList) {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const isToday = updated.dueDate === todayStr;
+      if (!isToday) {
+        const todayCard = findAllCards({ taskId: updated._id }).find(c => c.listId === todayList._id);
+        if (todayCard) {
+          const nextList = findAllLists({ sectionId: todayList.sectionId }).find(l => l.name === 'Next');
+          if (nextList) {
+            // Remove from Today
+            deleteCard(todayCard._id);
+            trackCommitmentTransition(updated._id, todayList._id, null);
+            // Add to Next if not already there
+            const nextCard = findAllCards({ taskId: updated._id }).find(c => c.listId === nextList._id);
+            if (!nextCard) {
+              insertCard({ taskId: updated._id, listId: nextList._id });
+              trackCommitmentTransition(updated._id, null, nextList._id);
+            }
+          }
+        }
+      }
+    }
+  }
 
   if (updated.parentId && Object.keys(propagateData).length > 0) {
     propagateToSiblings(updated, propagateData);

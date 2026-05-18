@@ -48,3 +48,10 @@ export function deleteLabel(id: string): void {
   getDb().prepare('DELETE FROM task_labels WHERE labelId = ?').run(id);
   getDb().prepare('DELETE FROM labels WHERE id = ?').run(id);
 }
+
+export function cleanupOrphanedLabel(labelId: string): void {
+  const usage = getDb().prepare('SELECT COUNT(*) as cnt FROM task_labels WHERE labelId = ?').get(labelId) as { cnt: number };
+  if (usage.cnt === 0) {
+    deleteLabel(labelId);
+  }
+}
