@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { computeNextDueDate, handleRecurringCompletion } from '../composables/useRecurrence';
 import { parseTaskMacros } from '../utils/taskMacros';
@@ -106,6 +106,21 @@ function setDueTomorrow() {
 
 function clearDueDate() {
   dueDate.value = '';
+}
+
+function isExistingTaskEdit(): boolean {
+  return Boolean(props.card && task.value);
+}
+
+async function saveAfterDateShortcut() {
+  if (!isExistingTaskEdit()) return;
+  await save();
+}
+
+async function onListSelectionChange() {
+  if (!isExistingTaskEdit()) return;
+  if (!selectedListId.value) return;
+  await save();
 }
 
 async function followUp() {
@@ -437,7 +452,7 @@ function onOverlayClick(e: MouseEvent) {
           <!-- List Selector -->
           <div class="modal__row">
             <label class="modal__label">List (optional)</label>
-            <select v-model="selectedListId" class="modal__select">
+            <select v-model="selectedListId" class="modal__select" @change="onListSelectionChange">
               <option :value="null">— No change —</option>
               <optgroup label="Counter" v-if="availableLists.some(l => l.sectionSlug === 'planning')">
                 <option
@@ -512,9 +527,9 @@ function onOverlayClick(e: MouseEvent) {
                 type="date"
                 class="modal__date"
               />
-              <button type="button" class="modal__date-shortcut" @click="setDueToday">Today</button>
-              <button type="button" class="modal__date-shortcut" @click="setDueTomorrow">Tomorrow</button>
-              <button type="button" class="modal__date-shortcut" @click="clearDueDate">Clear</button>
+              <button type="button" class="modal__date-shortcut" @click="setDueToday(); saveAfterDateShortcut()">Today</button>
+              <button type="button" class="modal__date-shortcut" @click="setDueTomorrow(); saveAfterDateShortcut()">Tomorrow</button>
+              <button type="button" class="modal__date-shortcut" @click="clearDueDate(); saveAfterDateShortcut()">Clear</button>
             </div>
           </div>
 
