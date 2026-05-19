@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import type { ISection, IList } from '../types';
 
-const props = defineProps<{ hiddenSlugs: Set<string> }>();
+const props = defineProps<{ hiddenSlugs: Set<string>; modelValue?: string; statsVisible?: boolean }>();
 const emit = defineEmits<{
   (e: 'toggle', slug: string): void;
   (e: 'openImport', payload?: { listId?: string }): void;
   (e: 'openGlobalSettings'): void;
+  (e: 'update:modelValue', value: string): void;
+  (e: 'toggle-stats'): void;
 }>();
 
 const store = useTaskStore();
@@ -21,6 +23,8 @@ const sections = computed(() => {
 });
 
 const settingsOpen = ref(false);
+const filterOpen = ref(false);
+const filterInputRef = ref<HTMLInputElement | null>(null);
 const runtimeInfo = (window as any).__CHARTERIS__ || {};
 const buildVersion = runtimeInfo.version || 'dev';
 const buildCommit = runtimeInfo.commit || '';
@@ -32,6 +36,27 @@ function toggleSettings() {
 
 function closeSettings() {
   settingsOpen.value = false;
+}
+
+function toggleFilter() {
+  filterOpen.value = !filterOpen.value;
+  if (filterOpen.value) {
+    nextTick(() => filterInputRef.value?.focus());
+  } else {
+    emit('update:modelValue', '');
+  }
+}
+
+function closeFilter() {
+  filterOpen.value = false;
+  emit('update:modelValue', '');
+}
+
+function clearFilter() {
+  emit('update:modelValue', '');
+  if (filterOpen.value) {
+    nextTick(() => filterInputRef.value?.focus());
+  }
 }
 
 async function archiveAllCompleted() {
@@ -72,16 +97,57 @@ function openGlobalSettings() {
       <i :class="['fas', section.icon || 'fa-folder']"></i>
     </button>
 
-    <!-- Settings gear -->
+    <!-- Stats toggle -->
+    <button
+      class="section-nav__btn"
+      :class="{ 'section-nav__btn--active': statsVisible }"
+      title="Statistics"
+      @click="emit('toggle-stats')"
+    >
+      <i class="fas fa-chart-line"></i>
+    </button>
+
+    <!-- Filter -->
+    <div class="section-nav__filter-wrap">
+      <button
+        class="section-nav__btn"
+        :class="{ 'section-nav__btn--active': filterOpen || !!modelValue }"
+        title="Filter"
+        @click="toggleFilter"
+      >
+        <i class="fas fa-search"></i>
+      </button>
+      <input
+        v-if="filterOpen"
+        ref="filterInputRef"
+        class="section-nav__filter-input"
+        type="text"
+        placeholder="Filter..."
+        :value="modelValue"
+        @input="(e) => emit('update:modelValue', (e.target as HTMLInputElement).value)"
+        @keydown.escape="closeFilter"
+        @keydown.enter="filterOpen = false"
+      />
+      <button
+        v-if="filterOpen || modelValue"
+        class="section-nav__btn"
+        title="Clear filter"
+        @click="clearFilter"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Settings hamburger -->
     <div class="section-nav__settings-wrap" @keydown.escape="closeSettings">
       <button
         class="section-nav__btn"
         :aria-expanded="settingsOpen"
         aria-haspopup="menu"
-        title="Settings"
+        title="Menu"
         @click="toggleSettings"
       >
-        <i class="fas fa-cog"></i>
+        <i class="fas fa-bars"></i>
       </button>
       <ul v-if="settingsOpen" class="settings-dropdown" role="menu" @click.stop>
         <li role="none">
@@ -170,6 +236,38 @@ function openGlobalSettings() {
 
 .section-nav__btn--hidden {
   opacity: 0.35;
+}
+
+.section-nav__btn--active {
+  background: rgba(0, 255, 255, 0.15);
+  color: #00ffff;
+}
+
+.section-nav__filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.section-nav__filter-input {
+  width: 140px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 0 10px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--transition-default);
+}
+
+.section-nav__filter-input:focus {
+  border-color: rgba(0, 255, 255, 0.5);
+}
+
+.section-nav__filter-input::placeholder {
+  color: var(--text-secondary);
 }
 
 .section-nav__settings-wrap {

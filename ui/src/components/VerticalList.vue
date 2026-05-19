@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { computed, ref, nextTick, onMounted, onUnmounted, inject } from 'vue';
+import type { Ref } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { useDragDrop, dragCard } from '../composables/useDragDrop';
 import { hoveredListId } from '../composables/useHoveredList';
@@ -19,6 +20,53 @@ const store = useTaskStore();
 const { canDrop, onDrop } = useDragDrop();
 
 const cards = computed(() => store.cardsForList(props.list._id));
+const filterQuery = inject<Ref<string>>('filterQuery', ref(''));
+
+const filteredCards = computed(() => {
+  const q = filterQuery.value?.trim() ?? '';
+  if (q.length < 3) return cards.value;
+
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const labelNames: string[] = [];
+  const dateTokens: string[] = [];
+  const titleTokens: string[] = [];
+
+  for (const token of tokens) {
+    if (token.startsWith('@')) {
+      labelNames.push(token.slice(1).toLowerCase());
+    } else if (['today', 'overdue', 'tomorrow'].includes(token.toLowerCase())) {
+      dateTokens.push(token.toLowerCase());
+    } else {
+      titleTokens.push(token.toLowerCase());
+    }
+  }
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  return cards.value.filter(card => {
+    const task = store.tasks.find(t => t._id === card.taskId);
+    if (!task) return false;
+
+    if (titleTokens.length && !titleTokens.every(t => task.title.toLowerCase().includes(t))) return false;
+
+    for (const name of labelNames) {
+      const label = store.labels.find(l => l.name.toLowerCase() === name);
+      if (!label || !task.labels.includes(label._id)) return false;
+    }
+
+    for (const dt of dateTokens) {
+      if (dt === 'today' && task.dueDate !== todayStr) return false;
+      if (dt === 'tomorrow' && task.dueDate !== tomorrowStr) return false;
+      if (dt === 'overdue' && (!task.dueDate || task.dueDate >= todayStr)) return false;
+    }
+
+    return true;
+  });
+});
 const activeCardCount = computed(() => store.activeCardCountForList(props.list._id));
 const listSemanticClass = computed(() => `list-${toClassSlug(props.list.name)}`);
 
@@ -418,13 +466,13 @@ function openImportForList() {
       @dragleave="onDragLeave"
       @drop="handleDrop"
     >
-      <template v-for="(card, i) in cards" :key="card._id">
+      <template v-for="(card, i) in filteredCards" :key="card._id">
         <div v-if="isSameListDrag && dropIndex === i && dragCard?._id !== card._id" class="drop-indicator"></div>
         <div :data-card-id="card._id">
           <TaskCard :card="card" :section-slug="section.slug" @open="(c: ICard) => emit('openCard', c)" />
         </div>
       </template>
-      <div v-if="isSameListDrag && dropIndex === cards.length" class="drop-indicator"></div>
+      <div v-if="isSameListDrag && dropIndex === filteredCards.length" class="drop-indicator"></div>
     </div>
     <div v-if="adding" class="list__add-form">
       <input

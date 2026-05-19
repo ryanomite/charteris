@@ -104,21 +104,21 @@ async function cast() {
         <button
           v-if="section.slug === 'planning'"
           class="section__action-btn"
-          title="Adjourn: clear Today list"
+          title="Stow: clear Today list"
           @click="adjourn"
         >
           <i class="fas fa-times-circle"></i>
-          Adjourn
+          Stow
         </button>
         <!-- Briefing: Cast button -->
         <button
           v-if="section.slug === 'planning'"
           class="section__action-btn"
-          title="Cast: pull overdue/priority tasks into Today"
+          title="Prep: pull overdue/priority tasks into Today"
           @click="cast"
         >
           <i class="fas fa-arrow-left"></i>
-          Cast
+          Prep
         </button>
       </div>
       <div

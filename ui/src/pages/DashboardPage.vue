@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, provide } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
@@ -7,6 +7,7 @@ import { useWebSocket } from '../composables/useWebSocket';
 import { runRecurrenceChecks, needsRecurrenceCheck } from '../composables/useRecurrence';
 import SectionPanel from '../components/SectionPanel.vue';
 import MobileNav from '../components/MobileNav.vue';
+import StatisticsSection from '../components/StatisticsSection.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
 import TaskImportModal from '../components/TaskImportModal.vue';
 import GlobalSettingsModal from '../components/GlobalSettingsModal.vue';
@@ -15,6 +16,9 @@ import type { ICard } from '../types';
 const store = useTaskStore();
 const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
+const filterQuery = ref('');
+const statsVisible = ref(false);
+provide('filterQuery', filterQuery);
 const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
 const globalSettingsOpen = ref(false);
@@ -157,6 +161,7 @@ onUnmounted(() => {
         @open-card="openCard"
         @open-import="openImport"
       />
+      <StatisticsSection v-show="statsVisible" />
     </div>
   </div>
   <div class="dashboard-loading" v-else>
@@ -164,9 +169,12 @@ onUnmounted(() => {
   </div>
   <MobileNav
     :hiddenSlugs="hiddenSlugs"
+    v-model="filterQuery"
+    :statsVisible="statsVisible"
     @toggle="toggleSection"
     @open-import="openImport"
     @open-global-settings="openGlobalSettings"
+    @toggle-stats="statsVisible = !statsVisible"
   />
   <TaskEditModal :card="editingCard" @close="editingCard = null" @open="openCard" />
   <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />

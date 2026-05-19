@@ -266,6 +266,9 @@ function runMigrations(): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_occurredAt ON task_events(occurredAt)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_taskId_occurredAt ON task_events(taskId, occurredAt)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_task_events_eventType_occurredAt ON task_events(eventType, occurredAt)');
+
+  // Update planning section icon from fa-calendar-alt to fa-utensils.
+  db.exec("UPDATE sections SET icon = 'fa-utensils' WHERE slug = 'planning' AND icon = 'fa-calendar-alt'");
 }
 
 function seedIfEmpty(): void {
@@ -285,7 +288,7 @@ function seedIfEmpty(): void {
     const boardId = generateId();
 
     insertSection.run(inboxId, 'Inbox', 'inbox', 'fa-inbox', 0);
-    insertSection.run(planningId, 'Briefing', 'planning', 'fa-calendar-alt', 1);
+    insertSection.run(planningId, 'Briefing', 'planning', 'fa-utensils', 1);
     insertSection.run(boardId, 'Cabinet', 'board', 'fa-columns', 2);
 
     insertList.run(generateId(), 'Draft', inboxId, 0, 1);
