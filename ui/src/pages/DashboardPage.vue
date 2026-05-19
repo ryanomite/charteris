@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, provide } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed, provide } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts';
@@ -19,6 +19,31 @@ const hiddenSlugs = ref(new Set<string>());
 const filterQuery = ref('');
 const statsVisible = ref(false);
 provide('filterQuery', filterQuery);
+
+function readFragment() {
+  const hash = location.hash.slice(1);
+  if (!hash) return null;
+  const params = new URLSearchParams(hash);
+  return {
+    hiddenSlugs: new Set(params.get('h')?.split(',').filter(Boolean) ?? []),
+    statsVisible: params.get('stats') === '1',
+    filterQuery: params.get('q') ?? '',
+  };
+}
+
+function writeFragment() {
+  const params = new URLSearchParams();
+  const hidden = [...hiddenSlugs.value];
+  if (hidden.length) params.set('h', hidden.join(','));
+  if (statsVisible.value) params.set('stats', '1');
+  if (filterQuery.value) params.set('q', filterQuery.value);
+  const hash = params.toString();
+  history.replaceState(null, '', hash ? `#${hash}` : location.pathname + location.search);
+}
+
+watch(hiddenSlugs, writeFragment, { deep: true });
+watch(statsVisible, writeFragment);
+watch(filterQuery, writeFragment);
 const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
 const globalSettingsOpen = ref(false);
@@ -110,15 +135,26 @@ async function onVisibilityOrFocus() {
 }
 
 onMounted(async () => {
+  const fragment = readFragment();
+  if (fragment) {
+    hiddenSlugs.value = fragment.hiddenSlugs;
+    statsVisible.value = fragment.statsVisible;
+    filterQuery.value = fragment.filterQuery;
+  }
+
   await refreshFromServer();
-  // Auto-hide inbox if Draft list has no cards
-  const inboxSection = store.sortedSections.find(s => s.slug === 'inbox');
-  if (inboxSection) {
-    const draftList = store.listsForSection(inboxSection._id).find(l => l.name === 'Draft');
-    if (draftList && store.cardsForList(draftList._id).length === 0) {
-      hiddenSlugs.value = new Set(['inbox']);
+
+  if (!fragment) {
+    // Auto-hide inbox if Draft list has no cards
+    const inboxSection = store.sortedSections.find(s => s.slug === 'inbox');
+    if (inboxSection) {
+      const draftList = store.listsForSection(inboxSection._id).find(l => l.name === 'Draft');
+      if (draftList && store.cardsForList(draftList._id).length === 0) {
+        hiddenSlugs.value = new Set(['inbox']);
+      }
     }
   }
+
   // Run recurrence checks on initial load
   await runRecurrenceChecks();
   // Check periodically for date changes

@@ -39,7 +39,7 @@ router.get('/', (_req: Request, res: Response) => {
     const x = row?.completions ?? 0;
     commitments.push(c);
     completions.push(x);
-    percentages.push(c > 0 ? Math.round((x / c) * 100) : 0);
+    percentages.push(c > 0 ? Math.min(100, Math.round((x / c) * 100)) : 0);
   }
 
   res.json({ dates, commitments, completions, percentages });
