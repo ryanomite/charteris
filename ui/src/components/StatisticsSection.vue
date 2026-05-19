@@ -81,14 +81,18 @@ const xLabels = computed(() => {
 </script>
 
 <template>
-  <div class="stats-section">
+  <section class="stats-section">
     <div class="stats-section__header">
-      <span class="stats-section__title">Statistics</span>
+      <div class="stats-section__title">
+        <i class="fas fa-chart-line"></i>
+        <span>Statistics</span>
+      </div>
       <button class="stats-section__refresh" title="Refresh" @click="fetchStats" :disabled="loading">
         <i :class="['fas', loading ? 'fa-spinner fa-spin' : 'fa-sync-alt']"></i>
       </button>
     </div>
 
+    <div class="stats-section__body">
     <div v-if="!data && !loading" class="stats-section__empty">No data yet.</div>
 
     <template v-if="data">
@@ -140,34 +144,48 @@ const xLabels = computed(() => {
         </div>
       </div>
     </template>
-  </div>
+    </div>
+  </section>
 </template>
 
 <style scoped>
 .stats-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background: var(--surface-section);
+  background: #02a0f022;
   border-radius: var(--radius-section);
-  padding: 16px;
+  overflow: hidden;
+  min-height: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
   min-width: 220px;
   flex: 1 1 0;
+}
+
+.stats-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 16px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 240px;
 }
 
 .stats-section__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 12px 16px;
+  flex-shrink: 0;
 }
 
 .stats-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
   font-size: 1rem;
-  font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 .stats-section__refresh {
