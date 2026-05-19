@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Line } from 'vue-chartjs';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import api from '../services/api';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface StatsData {
   dates: string[];
@@ -34,50 +47,117 @@ onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
 });
 
-// SVG chart helpers
-const CHART_W = 320;
-const CHART_H = 90;
-const PAD_X = 4;
-const PAD_Y = 6;
+const baseChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 400 },
+  plugins: {
+    legend: {
+      labels: {
+        color: '#a0a0a0',
+        boxWidth: 20,
+        boxHeight: 2,
+        padding: 12,
+        font: { size: 11 },
+      },
+    },
+    tooltip: {
+      backgroundColor: '#1e1e2e',
+      borderColor: 'rgba(255,255,255,0.12)',
+      borderWidth: 1,
+      titleColor: '#ffffff',
+      bodyColor: '#a0a0a0',
+    },
+  },
+  scales: {
+    x: {
+      ticks: {
+        color: '#a0a0a0',
+        maxRotation: 0,
+        autoSkip: true,
+        maxTicksLimit: 7,
+        font: { size: 10 },
+      },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+    },
+  },
+};
 
-function toPoints(values: number[], maxVal: number): string {
-  if (values.length < 2 || maxVal === 0) return '';
-  return values
-    .map((v, i) => {
-      const x = PAD_X + (i / (values.length - 1)) * (CHART_W - 2 * PAD_X);
-      const y = PAD_Y + (1 - v / maxVal) * (CHART_H - 2 * PAD_Y);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
-}
+const countChartData = computed(() => ({
+  labels: data.value?.dates.map(d => d.slice(5)) ?? [],
+  datasets: [
+    {
+      label: 'Commitments',
+      data: data.value?.commitments ?? [],
+      borderColor: '#ff8c00',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 2,
+      tension: 0.3,
+    },
+    {
+      label: 'Completions',
+      data: data.value?.completions ?? [],
+      borderColor: '#32cd32',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 2,
+      tension: 0.3,
+    },
+  ],
+}));
 
-const commitMaxVal = computed(() => {
-  if (!data.value) return 1;
-  return Math.max(1, ...data.value.commitments, ...data.value.completions);
-});
+const countChartOptions = computed(() => ({
+  ...baseChartOptions,
+  scales: {
+    ...baseChartOptions.scales,
+    y: {
+      ticks: {
+        color: '#a0a0a0',
+        font: { size: 10 },
+        precision: 0,
+      },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+      beginAtZero: true,
+    },
+  },
+}));
 
-const commitPoints = computed(() =>
-  data.value ? toPoints(data.value.commitments, commitMaxVal.value) : ''
-);
-const completionPoints = computed(() =>
-  data.value ? toPoints(data.value.completions, commitMaxVal.value) : ''
-);
-const percentPoints = computed(() =>
-  data.value ? toPoints(data.value.percentages, 100) : ''
-);
+const percentChartData = computed(() => ({
+  labels: data.value?.dates.map(d => d.slice(5)) ?? [],
+  datasets: [
+    {
+      label: 'Completion %',
+      data: data.value?.percentages ?? [],
+      borderColor: '#00ffff',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 2,
+      tension: 0.3,
+    },
+  ],
+}));
 
-// Label every ~7 dates for x-axis ticks
-const xLabels = computed(() => {
-  if (!data.value) return [];
-  const n = data.value.dates.length;
-  const step = Math.ceil(n / 5);
-  const result: { x: number; label: string }[] = [];
-  for (let i = 0; i < n; i += step) {
-    const x = PAD_X + (i / (n - 1)) * (CHART_W - 2 * PAD_X);
-    result.push({ x, label: data.value.dates[i].slice(5) }); // MM-DD
-  }
-  return result;
-});
+const percentChartOptions = computed(() => ({
+  ...baseChartOptions,
+  plugins: {
+    ...baseChartOptions.plugins,
+    legend: { display: false },
+  },
+  scales: {
+    ...baseChartOptions.scales,
+    y: {
+      ticks: {
+        color: '#a0a0a0',
+        font: { size: 10 },
+        callback: (v: number | string) => `${v}%`,
+      },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+      beginAtZero: true,
+      max: 100,
+    },
+  },
+}));
 </script>
 
 <template>
@@ -93,57 +173,25 @@ const xLabels = computed(() => {
     </div>
 
     <div class="stats-section__body">
-    <div v-if="!data && !loading" class="stats-section__empty">No data yet.</div>
+      <div v-if="!data && !loading" class="stats-section__empty">No data yet.</div>
 
-    <template v-if="data">
-      <!-- Chart 1: Commitments + Completions -->
-      <div class="stats-section__chart-wrap">
-        <div class="stats-section__chart-label">Commitments &amp; Completions</div>
-        <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="stats-section__chart" preserveAspectRatio="none">
-          <polyline
-            v-if="commitPoints"
-            :points="commitPoints"
-            fill="none"
-            stroke="#ff8c00"
-            stroke-width="2"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-          />
-          <polyline
-            v-if="completionPoints"
-            :points="completionPoints"
-            fill="none"
-            stroke="#32cd32"
-            stroke-width="2"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-          />
-        </svg>
-        <div class="stats-section__chart-legend">
-          <span class="stats-section__legend-item stats-section__legend-item--commit">Commitments</span>
-          <span class="stats-section__legend-item stats-section__legend-item--complete">Completions</span>
+      <template v-if="data">
+        <!-- Chart 1: Commitments + Completions -->
+        <div class="stats-section__chart-wrap">
+          <div class="stats-section__chart-label">Commitments &amp; Completions</div>
+          <div class="stats-section__chart">
+            <Line :data="countChartData" :options="(countChartOptions as any)" />
+          </div>
         </div>
-      </div>
 
-      <!-- Chart 2: Completion % -->
-      <div class="stats-section__chart-wrap">
-        <div class="stats-section__chart-label">Completion %</div>
-        <svg :viewBox="`0 0 ${CHART_W} ${CHART_H}`" class="stats-section__chart" preserveAspectRatio="none">
-          <polyline
-            v-if="percentPoints"
-            :points="percentPoints"
-            fill="none"
-            stroke="#00ffff"
-            stroke-width="2"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-          />
-        </svg>
-        <div class="stats-section__x-axis">
-          <span v-for="tick in xLabels" :key="tick.label" class="stats-section__x-tick">{{ tick.label }}</span>
+        <!-- Chart 2: Completion % -->
+        <div class="stats-section__chart-wrap">
+          <div class="stats-section__chart-label">Completion %</div>
+          <div class="stats-section__chart">
+            <Line :data="percentChartData" :options="(percentChartOptions as any)" />
+          </div>
         </div>
-      </div>
-    </template>
+      </template>
     </div>
   </section>
 </template>
@@ -230,51 +278,7 @@ const xLabels = computed(() => {
 
 .stats-section__chart {
   width: 100%;
-  height: 90px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  display: block;
-}
-
-.stats-section__chart-legend {
-  display: flex;
-  gap: 12px;
-  font-size: 0.72rem;
-}
-
-.stats-section__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-secondary);
-}
-
-.stats-section__legend-item::before {
-  content: '';
-  display: inline-block;
-  width: 20px;
-  height: 2px;
-  border-radius: 1px;
-}
-
-.stats-section__legend-item--commit::before {
-  background: #ff8c00;
-}
-
-.stats-section__legend-item--complete::before {
-  background: #32cd32;
-}
-
-.stats-section__x-axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.68rem;
-  color: var(--text-secondary);
-  padding: 0 2px;
-}
-
-.stats-section__x-tick {
-  opacity: 0.7;
+  height: 180px;
+  position: relative;
 }
 </style>
