@@ -24,7 +24,7 @@ const filterQuery = inject<Ref<string>>('filterQuery', ref(''));
 
 const filteredCards = computed(() => {
   const q = filterQuery.value?.trim() ?? '';
-  if (q.length < 3) return cards.value;
+  if (q.length < 2) return cards.value;
 
   const tokens = q.split(/\s+/).filter(Boolean);
   const labelNames: string[] = [];
