@@ -155,7 +155,7 @@ const xLabels = computed(() => {
   background: #02a0f022;
   border-radius: var(--radius-section);
   overflow: hidden;
-  min-height: 0;
+  min-height: 500px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
   min-width: 220px;
   flex: 1 1 0;
@@ -168,7 +168,6 @@ const xLabels = computed(() => {
   padding: 0 16px 16px;
   overflow-y: auto;
   flex: 1;
-  min-height: 240px;
 }
 
 .stats-section__header {
