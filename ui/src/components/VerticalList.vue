@@ -370,6 +370,20 @@ function openImportForList() {
   closeMenu();
   emit('openImport', { listId: props.list._id });
 }
+
+function condenseAll() {
+  closeMenu();
+  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
+    el.classList.add('condensed');
+  });
+}
+
+function expandAll() {
+  closeMenu();
+  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
+    el.classList.remove('condensed');
+  });
+}
 </script>
 
 <template>
@@ -441,6 +455,18 @@ function openImportForList() {
             <button role="menuitem" class="dropdown__item" @click="openImportForList">
               <i class="fas fa-file-import"></i>
               Import tasks
+            </button>
+          </li>
+          <li role="none">
+            <button role="menuitem" class="dropdown__item" @click="condenseAll">
+              <i class="fas fa-compress-alt"></i>
+              Condense all
+            </button>
+          </li>
+          <li role="none">
+            <button role="menuitem" class="dropdown__item" @click="expandAll">
+              <i class="fas fa-expand-alt"></i>
+              Expand all
             </button>
           </li>
           <li v-if="!list.isFixed" role="none">

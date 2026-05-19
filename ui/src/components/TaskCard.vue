@@ -107,7 +107,16 @@ const actionArrow = computed(() => {
 });
 
 const shouldBeCondensed = computed(() => {
-  return task.value?.priority === 5 && store.globalSettings.hideRainyDayCards !== false;
+  const t = task.value;
+  if (!t) return false;
+  if (t.priority === 5 && store.globalSettings.hideRainyDayCards !== false) return true;
+  if (t.recurrence && t.dueDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(t.dueDate + 'T00:00:00');
+    return (due.getTime() - today.getTime()) / 86_400_000 >= 3;
+  }
+  return false;
 });
 
 const priorityClass = computed(() => {

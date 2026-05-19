@@ -125,6 +125,15 @@ const countChartOptions = computed(() => ({
   },
 }));
 
+const movingAvg14 = computed(() => {
+  const pcts = data.value?.percentages ?? [];
+  return pcts.map((_, i) => {
+    const start = Math.max(0, i - 13);
+    const window = pcts.slice(start, i + 1);
+    return Math.round(window.reduce((a, b) => a + b, 0) / window.length);
+  });
+});
+
 const percentChartData = computed(() => ({
   labels: data.value?.dates.map(d => d.slice(5)) ?? [],
   datasets: [
@@ -137,6 +146,17 @@ const percentChartData = computed(() => ({
       pointRadius: 0,
       pointHoverRadius: 4,
       tension: 0.3,
+    },
+    {
+      label: '14d avg',
+      data: movingAvg14.value,
+      borderColor: 'rgba(0,255,255,0.45)',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [5, 4],
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      tension: 0.4,
     },
   ],
 }));
