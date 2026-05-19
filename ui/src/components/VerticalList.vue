@@ -30,12 +30,19 @@ const filteredCards = computed(() => {
   const labelNames: string[] = [];
   const dateTokens: string[] = [];
   const titleTokens: string[] = [];
+  // priority filter: null = no filter, otherwise [min, max] inclusive
+  let priorityRange: [number, number] | null = null;
 
   for (const token of tokens) {
     if (token.startsWith('@')) {
       labelNames.push(token.slice(1).toLowerCase());
     } else if (['today', 'overdue', 'tomorrow'].includes(token.toLowerCase())) {
       dateTokens.push(token.toLowerCase());
+    } else if (/^p[1-5](-p?[1-5])?$/i.test(token)) {
+      const parts = token.toLowerCase().replace(/p/g, '').split('-');
+      const lo = parseInt(parts[0]);
+      const hi = parts[1] !== undefined ? parseInt(parts[1]) : lo;
+      priorityRange = [Math.min(lo, hi), Math.max(lo, hi)];
     } else {
       titleTokens.push(token.toLowerCase());
     }
@@ -62,6 +69,11 @@ const filteredCards = computed(() => {
       if (dt === 'today' && task.dueDate !== todayStr) return false;
       if (dt === 'tomorrow' && task.dueDate !== tomorrowStr) return false;
       if (dt === 'overdue' && (!task.dueDate || task.dueDate >= todayStr)) return false;
+    }
+
+    if (priorityRange) {
+      const p = task.priority;
+      if (p === null || p < priorityRange[0] || p > priorityRange[1]) return false;
     }
 
     return true;
