@@ -224,6 +224,7 @@ async function onActionClick(e: MouseEvent) {
     ]"
     :data-list-id="card.listId"
     :style="{ borderLeftColor: priorityColor }"
+    :title="shouldBeCondensed ? (task.title ?? undefined) : undefined"
     v-if="task"
     draggable="true"
     @dragstart="onDragStart(card, $event)"
