@@ -26,7 +26,7 @@ router.get('/', (req: Request, res: Response) => {
   const rows = db.prepare(`
     SELECT
       DATE(datetime(occurredAt, ?)) as date,
-      SUM(CASE WHEN eventType = 'task_committed' THEN 1 ELSE 0 END) as commitments,
+      COUNT(DISTINCT CASE WHEN eventType = 'task_committed' THEN taskId END) as commitments,
       SUM(CASE WHEN eventType = 'task_completed' THEN 1 ELSE 0 END) as completions
     FROM task_events
     WHERE eventType IN ('task_committed', 'task_completed')
