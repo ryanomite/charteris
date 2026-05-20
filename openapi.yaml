@@ -1250,15 +1250,18 @@ paths:
   # --- Public helpers (no auth) ---
   /public/today/top:
     get:
-      summary: Get top three incomplete Today tasks as plaintext
+      summary: Get top three incomplete Today tasks as a JSON array
       tags: [Public]
       responses:
         "200":
-          description: Newline-delimited task titles
+          description: Array of task titles (up to 3)
           content:
-            text/plain:
+            application/json:
               schema:
-                type: string
+                type: array
+                items:
+                  type: string
+                maxItems: 3
 
   /public/today/complete:
     get:

@@ -26,7 +26,7 @@ function getTodayIncompleteTasks() {
 
 router.get('/today/top', (_req: Request, res: Response) => {
   const top = getTodayIncompleteTasks().slice(0, 3).map(t => t.title);
-  res.type('text/plain').send(top.join('\n'));
+  res.json(top);
 });
 
 router.get('/today/complete', (req: Request, res: Response) => {
