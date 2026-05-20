@@ -162,6 +162,7 @@ router.post('/', (req: Request, res: Response) => {
 
   for (const targetId of targetListIds) {
     const createdCard = insertCard({ taskId: task._id, listId: targetId });
+    trackCommitmentTransition(task._id, null, targetId);
     broadcast('card:created', createdCard);
   }
 
