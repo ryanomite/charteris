@@ -127,10 +127,15 @@ const countChartOptions = computed(() => ({
 
 const movingAvg14 = computed(() => {
   const pcts = data.value?.percentages ?? [];
+  const commits = data.value?.commitments ?? [];
   return pcts.map((_, i) => {
     const start = Math.max(0, i - 13);
-    const window = pcts.slice(start, i + 1);
-    return Math.round(window.reduce((a, b) => a + b, 0) / window.length);
+    const qualifying = [];
+    for (let j = start; j <= i; j++) {
+      if ((commits[j] ?? 0) > 3) qualifying.push(pcts[j]);
+    }
+    if (qualifying.length === 0) return null;
+    return Math.round(qualifying.reduce((a, b) => a + b, 0) / qualifying.length);
   });
 });
 
