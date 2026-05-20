@@ -29,7 +29,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 async function fetchStats() {
   loading.value = true;
   try {
-    const { data: d } = await api.get<StatsData>('/stats');
+    const { data: d } = await api.get<StatsData>('/stats', { params: { tz: new Date().getTimezoneOffset() } });
     data.value = d;
   } catch (err) {
     console.error('Stats fetch failed:', err);

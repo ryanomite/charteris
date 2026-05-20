@@ -4,28 +4,36 @@ import { getDb } from '../db';
 const router = Router();
 
 // GET /api/v1/stats — returns daily commitment/completion counts for the last 30 days
-router.get('/', (_req: Request, res: Response) => {
+// Accepts optional ?tz=<minutes> (JS getTimezoneOffset(), e.g. 300 for CDT) to group by local date
+router.get('/', (req: Request, res: Response) => {
   const db = getDb();
 
-  // Generate the last 30 dates (today inclusive, oldest first)
+  // Parse timezone offset: JS getTimezoneOffset() = minutes *west* of UTC (positive for behind UTC)
+  const rawTz = parseInt(req.query.tz as string);
+  const tzOffset = Number.isFinite(rawTz) && rawTz >= -840 && rawTz <= 840 ? rawTz : 0;
+  // SQLite modifier to shift UTC → local: subtract tzOffset minutes
+  const tzModifier = `${-tzOffset} minutes`;
+
+  // Generate the last 30 dates in local time (oldest first)
+  const localNow = new Date(Date.now() - tzOffset * 60 * 1000);
   const dates: string[] = [];
   for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+    const d = new Date(localNow.getTime());
+    d.setUTCDate(d.getUTCDate() - i);
     dates.push(d.toISOString().slice(0, 10));
   }
 
   const rows = db.prepare(`
     SELECT
-      DATE(occurredAt) as date,
+      DATE(datetime(occurredAt, ?)) as date,
       SUM(CASE WHEN eventType = 'task_committed' THEN 1 ELSE 0 END) as commitments,
       SUM(CASE WHEN eventType = 'task_completed' THEN 1 ELSE 0 END) as completions
     FROM task_events
     WHERE eventType IN ('task_committed', 'task_completed')
-      AND DATE(occurredAt) >= ?
-    GROUP BY DATE(occurredAt)
+      AND DATE(datetime(occurredAt, ?)) >= ?
+    GROUP BY DATE(datetime(occurredAt, ?))
     ORDER BY date ASC
-  `).all(dates[0]) as { date: string; commitments: number; completions: number }[];
+  `).all(tzModifier, tzModifier, dates[0], tzModifier) as { date: string; commitments: number; completions: number }[];
 
   const rowMap = new Map(rows.map(r => [r.date, r]));
 
