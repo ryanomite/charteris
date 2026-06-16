@@ -114,7 +114,7 @@ const shouldBeCondensed = computed(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const due = new Date(t.dueDate + 'T00:00:00');
-    return (due.getTime() - today.getTime()) / 86_400_000 >= 3;
+    return due.getTime() > today.getTime();
   }
   return false;
 });

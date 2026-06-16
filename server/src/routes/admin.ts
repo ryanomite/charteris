@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getDb, generateId, now } from '../db';
 import { broadcast } from '../ws';
-import { findTaskById } from '../queries/tasks';
+import { findTaskById, updateTask } from '../queries/tasks';
 import { trackTaskDeletion } from '../utils/taskEventTracking';
 
 const router = Router();
@@ -52,6 +52,32 @@ router.post('/reset', (_req: Request, res: Response) => {
   dropAllData();
   ensureSectionsAndLists();
   res.json({ message: 'Database reset — sections and fixed lists restored' });
+});
+
+// POST /api/v1/admin/unschedule-overdue — remove due dates from overdue tasks
+router.post('/unschedule-overdue', (_req: Request, res: Response) => {
+  const db = getDb();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const overdueTasks = db.prepare(`
+    SELECT id
+    FROM tasks
+    WHERE dueDate IS NOT NULL
+      AND date(dueDate) < date(?)
+  `).all(todayStr) as Array<{ id: string }>;
+
+  let updatedCount = 0;
+  for (const task of overdueTasks) {
+    const updated = updateTask(task.id, { dueDate: null });
+    if (updated) {
+      broadcast('task:updated', updated);
+      updatedCount += 1;
+    }
+  }
+
+  res.json({ message: 'Overdue due dates cleared', updatedCount });
 });
 
 // POST /api/v1/admin/deduplicate — remove duplicate cards and duplicate-titled tasks

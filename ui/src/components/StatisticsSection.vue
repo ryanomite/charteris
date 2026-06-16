@@ -139,6 +139,13 @@ const movingAvg14 = computed(() => {
   });
 });
 
+const todayCompletionPct = computed(() => Math.round(data.value?.percentages.at(-1) ?? 0));
+const recentCompletionPct = computed(() => {
+  const recent = movingAvg14.value.at(-1);
+  return recent == null ? null : Math.round(recent);
+});
+const currentDayCommitments = computed(() => data.value?.commitments.at(-1) ?? 0);
+
 const percentChartData = computed(() => ({
   labels: data.value?.dates.map(d => d.slice(5)) ?? [],
   datasets: [
@@ -204,6 +211,21 @@ const percentChartOptions = computed(() => ({
       <div v-if="!data && !loading" class="stats-section__empty">No data yet.</div>
 
       <template v-if="data">
+        <div class="stats-section__summary-grid">
+          <article class="stats-section__summary-card">
+            <span class="stats-section__summary-label">Today's completion %</span>
+            <strong class="stats-section__summary-value">{{ todayCompletionPct }}%</strong>
+          </article>
+          <article class="stats-section__summary-card">
+            <span class="stats-section__summary-label">Recent completion %</span>
+            <strong class="stats-section__summary-value">{{ recentCompletionPct == null ? '—' : `${recentCompletionPct}%` }}</strong>
+          </article>
+          <article class="stats-section__summary-card">
+            <span class="stats-section__summary-label">Current day commitments</span>
+            <strong class="stats-section__summary-value">{{ currentDayCommitments }}</strong>
+          </article>
+        </div>
+
         <!-- Chart 1: Commitments + Completions -->
         <div class="stats-section__chart-wrap">
           <div class="stats-section__chart-label">Commitments &amp; Completions</div>
@@ -289,6 +311,36 @@ const percentChartOptions = computed(() => ({
   color: var(--text-secondary);
   text-align: center;
   padding: 24px 0;
+}
+
+.stats-section__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.stats-section__summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stats-section__summary-label {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stats-section__summary-value {
+  color: #ffffff;
+  font-size: 1.35rem;
+  line-height: 1.1;
 }
 
 .stats-section__chart-wrap {

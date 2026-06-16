@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
+import api from '../services/api';
 import type { ISection, IList } from '../types';
 
 const props = defineProps<{ hiddenSlugs: Set<string>; modelValue?: string; statsVisible?: boolean }>();
@@ -63,6 +64,17 @@ async function archiveAllCompleted() {
   closeSettings();
   if (!confirm('Archive all completed tasks?')) return;
   await store.archiveAllCompleted();
+}
+
+async function unscheduleOverdue() {
+  closeSettings();
+  if (!confirm('Remove due dates from all overdue tasks?')) return;
+  try {
+    await api.post('/admin/unschedule-overdue');
+    await store.fetchDashboard();
+  } catch (err: any) {
+    alert(err?.response?.data?.error || 'Failed to unschedule overdue tasks');
+  }
 }
 
 function displaySectionName(name: string, slug: string) {
@@ -186,6 +198,12 @@ function openGlobalSettings() {
           <button role="menuitem" class="settings-dropdown__item" @click="archiveAllCompleted">
             <i class="fas fa-archive"></i>
             Archive completed tasks
+          </button>
+        </li>
+        <li role="none">
+          <button role="menuitem" class="settings-dropdown__item" @click="unscheduleOverdue">
+            <i class="fas fa-calendar-times"></i>
+            Unschedule overdue
           </button>
         </li>
         <li role="none">
