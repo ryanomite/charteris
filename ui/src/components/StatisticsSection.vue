@@ -253,7 +253,7 @@ const percentChartOptions = computed(() => ({
   background: #02a0f022;
   border-radius: var(--radius-section);
   overflow: hidden;
-  min-height: 500px;
+  min-height: 620px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
   min-width: 220px;
   flex: 1 1 0;
@@ -339,7 +339,7 @@ const percentChartOptions = computed(() => ({
 
 .stats-section__summary-value {
   color: #ffffff;
-  font-size: 1.35rem;
+  font-size: 2.5rem;
   line-height: 1.1;
 }
 
