@@ -258,8 +258,23 @@ async function save() {
       subtasks: subtasks.value,
       labels: mergedLabels,
     };
+    const oldDueDate = task.value.dueDate;
     const { data } = await api.put(`/tasks/${task.value._id}`, payload);
     store.upsertTask(data);
+
+    // When the due date changes, the server may add/remove Today/Next cards.
+    // Refresh those lists so the UI reflects placement changes immediately,
+    // without waiting for the WebSocket event.
+    if (oldDueDate !== finalDueDate) {
+      const todayList = findTodayList(store);
+      const nextList = findNextList(store);
+      const refreshIds: string[] = [];
+      if (todayList) refreshIds.push(todayList._id);
+      if (nextList) refreshIds.push(nextList._id);
+      if (refreshIds.length) {
+        await store.refreshListCards(refreshIds);
+      }
+    }
 
     const currentList = props.card ? store.lists.find(l => l._id === props.card!.listId) : null;
     const currentSection = currentList
