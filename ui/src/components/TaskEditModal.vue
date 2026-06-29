@@ -16,6 +16,13 @@ const task = computed(() =>
   props.card ? store.taskById(props.card.taskId) : undefined
 );
 
+const hasTodayCard = computed(() => {
+  if (!task.value) return false;
+  const todayList = findTodayList(store);
+  if (!todayList) return false;
+  return store.cards.some(c => c.taskId === task.value!._id && c.listId === todayList._id);
+});
+
 // Local editing state (copies of the task fields)
 const title = ref('');
 const description = ref('');
@@ -362,6 +369,20 @@ async function toggleComplete() {
   }
 }
 
+async function stowCard() {
+  if (!task.value) return;
+  const todayList = findTodayList(store);
+  if (!todayList) return;
+  const todayCard = store.cards.find(c => c.taskId === task.value!._id && c.listId === todayList._id);
+  if (!todayCard) return;
+  try {
+    await api.delete(`/cards/${todayCard._id}`);
+    store.removeCard(todayCard._id);
+  } catch (err) {
+    console.error('Stow failed:', err);
+  }
+}
+
 async function archiveTask() {
   if (!task.value) return;
   try {
@@ -435,6 +456,13 @@ function onOverlayClick(e: MouseEvent) {
                 Follow-up
               </button>
             </div>
+          </div>
+
+          <!-- Stow -->
+          <div v-if="hasTodayCard" class="modal__row">
+            <button class="modal__btn modal__btn--stow" @click="stowCard">
+              <i class="fas fa-arrow-right"></i> Stow from Today
+            </button>
           </div>
 
           <!-- Priority -->
@@ -1114,6 +1142,17 @@ function onOverlayClick(e: MouseEvent) {
 
 .modal__btn--followup:hover {
   background: rgba(87, 140, 183, 0.38);
+}
+
+.modal__btn--stow {
+  color: var(--text-primary);
+  background: rgba(247, 127, 0, 0.18);
+  width: 100%;
+  justify-content: center;
+}
+
+.modal__btn--stow:hover {
+  background: rgba(247, 127, 0, 0.32);
 }
 
 .modal__btn--primary {
