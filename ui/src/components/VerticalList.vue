@@ -232,8 +232,32 @@ function handleQuickAdd(e: Event) {
   }
 }
 
+
+function condenseAll() {
+  closeMenu();
+  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
+    el.classList.add('condensed');
+  });
+}
+
+function expandAll() {
+  closeMenu();
+  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
+    el.classList.remove('condensed');
+  });
+}
+
 onMounted(() => {
   window.addEventListener('charteris:quick-add', handleQuickAdd);
+
+  // Auto-condense Next list cards on initial render
+  if (props.list.name === 'Next') {
+    nextTick(() => {
+      document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
+        el.classList.add('condensed');
+      });
+    });
+  }
 });
 
 onUnmounted(() => {
@@ -371,19 +395,6 @@ function openImportForList() {
   emit('openImport', { listId: props.list._id });
 }
 
-function condenseAll() {
-  closeMenu();
-  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
-    el.classList.add('condensed');
-  });
-}
-
-function expandAll() {
-  closeMenu();
-  document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
-    el.classList.remove('condensed');
-  });
-}
 </script>
 
 <template>
@@ -413,7 +424,7 @@ function expandAll() {
         v-else
         class="list__title"
         :class="{ 'list__title--editable': !list.isFixed }"
-        @click.stop="!list.isFixed && startRename()"
+        @click.stop="list.isFixed ? expandAll() : startRename()"
       >{{ list.name }}</span>
       <span class="list__count">{{ activeCardCount }}</span>
       <div class="list__menu-wrap" @keydown.escape="closeMenu">
