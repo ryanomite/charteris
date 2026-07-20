@@ -83,9 +83,17 @@ export interface Label {
   updatedAt: string;
 }
 
+export interface ViewPreset {
+  _id: string;
+  name: string;
+  icon: string;
+  hash: string;
+}
+
 export interface GlobalSettings {
   hideCommittedCards: boolean;
   castingRulesToday: string;
   castingRulesNext: string;
   cssOverrides: string;
+  viewPresets: ViewPreset[];
 }

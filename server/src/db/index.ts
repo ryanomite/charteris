@@ -269,6 +269,18 @@ function runMigrations(): void {
 
   // Update planning section icon from fa-calendar-alt to fa-utensils.
   db.exec("UPDATE sections SET icon = 'fa-utensils' WHERE slug = 'planning' AND icon = 'fa-calendar-alt'");
+
+  // Add viewPresets to global settings if missing.
+  const settingsRow = db.prepare("SELECT value FROM settings WHERE key = 'global'").get() as { value?: string } | undefined;
+  if (settingsRow?.value) {
+    try {
+      const parsed = JSON.parse(settingsRow.value);
+      if (!parsed.viewPresets) {
+        parsed.viewPresets = [];
+        db.prepare("UPDATE settings SET value = ? WHERE key = 'global'").run(JSON.stringify(parsed));
+      }
+    } catch { /* corrupt settings row — will be overwritten on next save */ }
+  }
 }
 
 function seedIfEmpty(): void {

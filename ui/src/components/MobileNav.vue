@@ -95,10 +95,29 @@ function openGlobalSettings() {
   closeSettings();
   emit('openGlobalSettings');
 }
+
+function applyPreset(hash: string) {
+  window.location.hash = hash;
+  window.location.reload();
+}
 </script>
 
 <template>
   <nav class="section-nav">
+    <template v-if="store.globalSettings.viewPresets?.length">
+      <a
+        v-for="preset in store.globalSettings.viewPresets"
+        :key="preset._id"
+        :href="'#' + preset.hash"
+        class="section-nav__btn section-nav__btn--preset"
+        :title="preset.name"
+        @click.prevent="applyPreset(preset.hash)"
+      >
+        <i :class="['fas', preset.icon]"></i>
+      </a>
+      <span class="section-nav__divider"></span>
+    </template>
+
     <button
       v-for="section in sections"
       :key="section._id"
@@ -259,6 +278,17 @@ function openGlobalSettings() {
 .section-nav__btn--active {
   background: rgba(0, 255, 255, 0.15);
   color: #00ffff;
+}
+
+.section-nav__btn--preset {
+  text-decoration: none;
+}
+
+.section-nav__divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 4px 2px;
 }
 
 .section-nav__filter-wrap {

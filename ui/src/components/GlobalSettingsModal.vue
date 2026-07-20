@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
+import type { IViewPreset } from '../types';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -15,12 +16,17 @@ const hideRainyDayCards = ref(false);
 const castingRulesToday = ref('');
 const castingRulesNext = ref('');
 const cssOverrides = ref('');
+const viewPresets = ref<IViewPreset[]>([]);
+
+const newPresetName = ref('');
+const newPresetIcon = ref('');
 
 const hasChanges = computed(() => (
   hideCommittedCards.value !== store.globalSettings.hideCommittedCards
   || castingRulesToday.value !== store.globalSettings.castingRulesToday
   || castingRulesNext.value !== store.globalSettings.castingRulesNext
   || cssOverrides.value !== store.globalSettings.cssOverrides
+  || JSON.stringify(viewPresets.value) !== JSON.stringify(store.globalSettings.viewPresets || [])
 ));
 
 watch(
@@ -32,6 +38,7 @@ watch(
     castingRulesToday.value = store.globalSettings.castingRulesToday;
     castingRulesNext.value = store.globalSettings.castingRulesNext;
     cssOverrides.value = store.globalSettings.cssOverrides;
+    viewPresets.value = [...(store.globalSettings.viewPresets || [])];
   },
   { immediate: true },
 );
@@ -45,6 +52,7 @@ async function save() {
       castingRulesToday: castingRulesToday.value.trim(),
       castingRulesNext: castingRulesNext.value.trim(),
       cssOverrides: cssOverrides.value,
+      viewPresets: viewPresets.value,
     });
     emit('close');
   } catch (err: any) {
@@ -52,6 +60,26 @@ async function save() {
   } finally {
     saving.value = false;
   }
+}
+
+function generateId(): string {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function addPreset() {
+  const name = newPresetName.value.trim();
+  const icon = newPresetIcon.value.trim();
+  if (!name || !icon) return;
+  const hash = location.hash.slice(1);
+  viewPresets.value = [...viewPresets.value, { _id: generateId(), name, icon, hash }];
+  newPresetName.value = '';
+  newPresetIcon.value = '';
+}
+
+function removePreset(id: string) {
+  viewPresets.value = viewPresets.value.filter(p => p._id !== id);
 }
 
 async function removeDuplicates() {
@@ -142,6 +170,38 @@ currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
               class="setting-input"
               placeholder=".label-home { background-color: #245 !important; }\n.list-workstuff { box-shadow: 0 0 20px #4af; }"
             ></textarea>
+          </div>
+
+          <div class="setting-block">
+            <label>View Presets</label>
+            <p class="setting-hint">Save the current view (visible sections, filter, stats) as quick-access icons in the nav bar.</p>
+            <div v-if="viewPresets.length" class="preset-list">
+              <div v-for="preset in viewPresets" :key="preset._id" class="preset-row">
+                <i :class="['fas', preset.icon]"></i>
+                <span class="preset-row__name">{{ preset.name }}</span>
+                <span class="preset-row__hash">{{ preset.hash }}</span>
+                <button class="preset-row__remove" @click="removePreset(preset._id)" title="Remove preset">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="preset-add">
+              <input
+                v-model="newPresetName"
+                class="setting-input preset-add__input"
+                placeholder="Name"
+                @keydown.enter="addPreset"
+              />
+              <input
+                v-model="newPresetIcon"
+                class="setting-input preset-add__input"
+                placeholder="fa-icon-name"
+                @keydown.enter="addPreset"
+              />
+              <button class="modal__btn preset-add__btn" @click="addPreset" :disabled="!newPresetName.trim() || !newPresetIcon.trim()">
+                <i class="fas fa-plus"></i> Save current view
+              </button>
+            </div>
           </div>
 
           <p v-if="error" class="modal__error">{{ error }}</p>
@@ -278,5 +338,78 @@ currentWeekday() >= 1 && currentWeekday() <= 5 && currentHour() < 17</pre>
   margin-right: auto;
   background: rgba(220, 70, 70, 0.22);
   color: #ffd6d6;
+}
+
+.setting-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.85rem;
+}
+
+.preset-row i:first-child {
+  width: 16px;
+  text-align: center;
+  color: var(--icon-ui);
+}
+
+.preset-row__name {
+  color: var(--text-primary);
+}
+
+.preset-row__hash {
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.preset-row__remove {
+  color: var(--icon-ui);
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.preset-row__remove:hover {
+  color: #ff7070;
+}
+
+.preset-add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.preset-add__input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px !important;
+  font-size: 0.85rem !important;
+}
+
+.preset-add__btn {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 </style>

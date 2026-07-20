@@ -1,5 +1,5 @@
 import { getDb, now } from '../db';
-import type { GlobalSettings } from '../types';
+import type { GlobalSettings, ViewPreset } from '../types';
 
 const SETTINGS_KEY = 'global';
 
@@ -8,6 +8,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
   castingRulesNext: 'isDueTomorrow()',
   cssOverrides: '',
+  viewPresets: [],
 };
 
 export function findGlobalSettings(): GlobalSettings {
@@ -29,6 +30,12 @@ export function findGlobalSettings(): GlobalSettings {
       cssOverrides: typeof parsed.cssOverrides === 'string'
         ? parsed.cssOverrides
         : DEFAULT_GLOBAL_SETTINGS.cssOverrides,
+      viewPresets: Array.isArray(parsed.viewPresets)
+        ? parsed.viewPresets.filter((p: any) =>
+            p && typeof p._id === 'string' && typeof p.name === 'string'
+            && typeof p.icon === 'string' && typeof p.hash === 'string'
+          )
+        : DEFAULT_GLOBAL_SETTINGS.viewPresets,
     };
   } catch {
     return { ...DEFAULT_GLOBAL_SETTINGS };
@@ -42,6 +49,7 @@ export function updateGlobalSettings(patch: Partial<GlobalSettings>): GlobalSett
     castingRulesToday: patch.castingRulesToday?.trim() || current.castingRulesToday,
     castingRulesNext: patch.castingRulesNext?.trim() || current.castingRulesNext,
     cssOverrides: patch.cssOverrides ?? current.cssOverrides,
+    viewPresets: patch.viewPresets ?? current.viewPresets,
   };
 
   getDb().prepare(`

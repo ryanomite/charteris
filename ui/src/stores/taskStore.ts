@@ -8,6 +8,7 @@ const DEFAULT_GLOBAL_SETTINGS: IGlobalSettings = {
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
   castingRulesNext: 'isDueTomorrow()',
   cssOverrides: '',
+  viewPresets: [],
 };
 
 export const useTaskStore = defineStore('tasks', () => {

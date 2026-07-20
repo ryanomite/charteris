@@ -49,11 +49,19 @@ export interface ILabel {
   name: string;
 }
 
+export interface IViewPreset {
+  _id: string;
+  name: string;
+  icon: string;
+  hash: string;
+}
+
 export interface IGlobalSettings {
   hideCommittedCards: boolean;
   castingRulesToday: string;
   castingRulesNext: string;
   cssOverrides: string;
+  viewPresets: IViewPreset[];
 }
 
 export interface IDashboard {

@@ -163,6 +163,21 @@ components:
         error:
           type: string
 
+    ViewPreset:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+          description: Display name (used as tooltip)
+        icon:
+          type: string
+          description: FontAwesome icon class, e.g. 'fa-bolt'
+        hash:
+          type: string
+          description: URL hash content (without #), e.g. 'h=inbox&stats=1'
+
 paths:
   # --- Sections ---
   /sections:
@@ -290,6 +305,10 @@ paths:
                     type: string
                   cssOverrides:
                     type: string
+                  viewPresets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ViewPreset"
     put:
       summary: Update global settings
       tags: [Settings]
@@ -310,6 +329,10 @@ paths:
                   type: string
                 cssOverrides:
                   type: string
+                viewPresets:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ViewPreset"
       responses:
         "200":
           description: Updated global settings
@@ -326,6 +349,10 @@ paths:
                     type: string
                   cssOverrides:
                     type: string
+                  viewPresets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ViewPreset"
 
   # --- Lists ---
   /lists:
