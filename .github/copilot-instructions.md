@@ -58,7 +58,7 @@ Features and fixes are requested one at a time. There is no PLAN.md. When given 
 
 ## Docker Development
 
-- Build and test with `docker build -t charteris .` and `docker run`.
+- **Do not build or run Docker locally.** A CapRover build server handles the Docker image build and deployment automatically on push. Just commit and push — nothing is testable locally.
 - A single Dockerfile in the project root handles the 2-stage build (Vue frontend → Node server).
 - Data persists in a Docker volume mounted at `/data`.
 - The container serves everything on port 8080: API (`/api/v1`), static UI (`/`), WebSocket, MCP (`/mcp`), health (`/health`), and Swagger docs (`/api/docs`).
