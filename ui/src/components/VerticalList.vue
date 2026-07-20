@@ -26,57 +26,70 @@ const filteredCards = computed(() => {
   const q = filterQuery.value?.trim() ?? '';
   if (q.length < 2) return cards.value;
 
-  const tokens = q.split(/\s+/).filter(Boolean);
-  const labelNames: string[] = [];
-  const dateTokens: string[] = [];
-  const titleTokens: string[] = [];
-  // priority filter: null = no filter, otherwise [min, max] inclusive
-  let priorityRange: [number, number] | null = null;
-
-  for (const token of tokens) {
-    if (token.startsWith('@')) {
-      labelNames.push(token.slice(1).toLowerCase());
-    } else if (['today', 'overdue', 'tomorrow'].includes(token.toLowerCase())) {
-      dateTokens.push(token.toLowerCase());
-    } else if (/^p[1-5](-p?[1-5])?$/i.test(token)) {
-      const parts = token.toLowerCase().replace(/p/g, '').split('-');
-      const lo = parseInt(parts[0]);
-      const hi = parts[1] !== undefined ? parseInt(parts[1]) : lo;
-      priorityRange = [Math.min(lo, hi), Math.max(lo, hi)];
-    } else {
-      titleTokens.push(token.toLowerCase());
-    }
-  }
-
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().slice(0, 10);
 
-  return cards.value.filter(card => {
-    const task = store.tasks.find(t => t._id === card.taskId);
-    if (!task) return false;
+  function parseTokens(raw: string) {
+    const tokens = raw.split(/[\s|]+/).filter(Boolean);
+    const labelNames: string[] = [];
+    const dateTokens: string[] = [];
+    const titleTokens: string[] = [];
+    let priorityRange: [number, number] | null = null;
 
-    if (titleTokens.length && !titleTokens.every(t => task.title.toLowerCase().includes(t))) return false;
+    for (const token of tokens) {
+      if (token.startsWith('@')) {
+        labelNames.push(token.slice(1).toLowerCase());
+      } else if (['today', 'overdue', 'tomorrow'].includes(token.toLowerCase())) {
+        dateTokens.push(token.toLowerCase());
+      } else if (/^p[1-5](-p?[1-5])?$/i.test(token)) {
+        const parts = token.toLowerCase().replace(/p/g, '').split('-');
+        const lo = parseInt(parts[0]);
+        const hi = parts[1] !== undefined ? parseInt(parts[1]) : lo;
+        priorityRange = [Math.min(lo, hi), Math.max(lo, hi)];
+      } else {
+        titleTokens.push(token.toLowerCase());
+      }
+    }
 
-    for (const name of labelNames) {
+    return { labelNames, dateTokens, titleTokens, priorityRange };
+  }
+
+  function matchesGroup(task: { title: string; dueDate: string | null; priority: number | null; labels: string[] }, group: ReturnType<typeof parseTokens>) {
+    if (group.titleTokens.length && !group.titleTokens.every(t => task.title.toLowerCase().includes(t))) return false;
+
+    for (const name of group.labelNames) {
       const label = store.labels.find(l => l.name.toLowerCase() === name);
       if (!label || !task.labels.includes(label._id)) return false;
     }
 
-    for (const dt of dateTokens) {
+    for (const dt of group.dateTokens) {
       if (dt === 'today' && task.dueDate !== todayStr) return false;
       if (dt === 'tomorrow' && task.dueDate !== tomorrowStr) return false;
       if (dt === 'overdue' && (!task.dueDate || task.dueDate >= todayStr)) return false;
     }
 
-    if (priorityRange) {
+    if (group.priorityRange) {
       const p = task.priority;
-      if (p === null || p < priorityRange[0] || p > priorityRange[1]) return false;
+      if (p === null || p < group.priorityRange[0] || p > group.priorityRange[1]) return false;
     }
 
     return true;
+  }
+
+  const isOr = q.includes('||');
+  const groups = isOr
+    ? q.split('||').map(g => parseTokens(g))
+    : [parseTokens(q)];
+
+  return cards.value.filter(card => {
+    const task = store.tasks.find(t => t._id === card.taskId);
+    if (!task) return false;
+    return isOr
+      ? groups.some(group => matchesGroup(task, group))
+      : matchesGroup(task, groups[0]);
   });
 });
 const activeCardCount = computed(() => store.activeCardCountForList(props.list._id));
