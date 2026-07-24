@@ -203,6 +203,7 @@ onUnmounted(() => {
         :focusMode="focusMode"
         @open-card="openCard"
         @open-import="openImport"
+        @toggle-focus="focusMode = !focusMode"
       />
       <StatisticsSection v-show="statsVisible" />
     </div>
