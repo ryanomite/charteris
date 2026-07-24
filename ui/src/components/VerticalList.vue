@@ -759,6 +759,10 @@ function openImportForList() {
   gap: 8px;
 }
 
+.list--focus :deep(.card--complete) {
+  display: none;
+}
+
 .drop-indicator {
   height: 3px;
   background: var(--accent, #457B9D);
