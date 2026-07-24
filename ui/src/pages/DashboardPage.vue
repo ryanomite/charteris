@@ -18,7 +18,9 @@ const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
 const filterQuery = ref('');
 const statsVisible = ref(false);
+const focusMode = ref(false);
 provide('filterQuery', filterQuery);
+provide('focusMode', focusMode);
 
 function readFragment() {
   const hash = location.hash.slice(1);
@@ -27,6 +29,7 @@ function readFragment() {
   return {
     hiddenSlugs: new Set(params.get('h')?.split(',').filter(Boolean) ?? []),
     statsVisible: params.get('stats') === '1',
+    focusMode: params.get('focus') === '1',
     filterQuery: params.get('q') ?? '',
   };
 }
@@ -36,6 +39,7 @@ function writeFragment() {
   const hidden = [...hiddenSlugs.value];
   if (hidden.length) params.set('h', hidden.join(','));
   if (statsVisible.value) params.set('stats', '1');
+  if (focusMode.value) params.set('focus', '1');
   if (filterQuery.value) params.set('q', filterQuery.value);
   const hash = params.toString();
   history.replaceState(null, '', hash ? `#${hash}` : location.pathname + location.search);
@@ -43,6 +47,7 @@ function writeFragment() {
 
 watch(hiddenSlugs, writeFragment, { deep: true });
 watch(statsVisible, writeFragment);
+watch(focusMode, writeFragment);
 watch(filterQuery, writeFragment);
 const importOpen = ref(false);
 const importTargetListId = ref<string | null>(null);
@@ -139,6 +144,7 @@ onMounted(async () => {
   if (fragment) {
     hiddenSlugs.value = fragment.hiddenSlugs;
     statsVisible.value = fragment.statsVisible;
+    focusMode.value = fragment.focusMode;
     filterQuery.value = fragment.filterQuery;
   }
 
@@ -194,6 +200,7 @@ onUnmounted(() => {
         v-show="isSectionVisible(section.slug)"
         :key="section._id"
         :section="section"
+        :focusMode="focusMode"
         @open-card="openCard"
         @open-import="openImport"
       />

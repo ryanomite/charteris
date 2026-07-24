@@ -21,6 +21,9 @@ const { canDrop, onDrop } = useDragDrop();
 
 const cards = computed(() => store.cardsForList(props.list._id));
 const filterQuery = inject<Ref<string>>('filterQuery', ref(''));
+const focusMode = inject<Ref<boolean>>('focusMode', ref(false));
+
+const isFocusList = computed(() => focusMode.value && props.list.name === 'Today' && props.section.slug === 'planning');
 
 const filteredCards = computed(() => {
   const q = filterQuery.value?.trim() ?? '';
@@ -417,6 +420,7 @@ function openImportForList() {
       {
         'list--drag-over': isOver && droppable,
         'list--archived': list.archived,
+        'list--focus': isFocusList,
       },
       listSemanticClass,
     ]"
@@ -738,6 +742,21 @@ function openImportForList() {
 .list--archived {
   opacity: 0.4;
   filter: grayscale(0.5);
+}
+
+/* Focus mode: expand Today list to fill Counter section, 2-column card grid */
+.list--focus {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
+.list--focus .list__cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 8px;
 }
 
 .drop-indicator {

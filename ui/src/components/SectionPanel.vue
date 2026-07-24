@@ -6,10 +6,11 @@ import VerticalList from './VerticalList.vue';
 import api from '../services/api';
 import type { ISection, ICard, IList } from '../types';
 
-const props = defineProps<{ section: ISection }>();
+const props = defineProps<{ section: ISection; focusMode?: boolean }>();
 const emit = defineEmits<{
   (e: 'openCard', card: ICard): void;
   (e: 'openImport', payload?: { listId?: string }): void;
+  (e: 'toggleFocus'): void;
 }>();
 const store = useTaskStore();
 const { clearSelection } = useSelection();
@@ -26,7 +27,11 @@ const bgVar = computed(() => {
   return map[props.section.slug] || 'var(--bg-section-board)';
 });
 
-const sectionClass = computed(() => `section section--${props.section.slug}`);
+const sectionClass = computed(() => {
+  const cls = `section section--${props.section.slug}`;
+  if (props.focusMode && props.section.slug === 'planning') return `${cls} section--focus`;
+  return cls;
+});
 const displaySectionName = computed(() => (props.section.slug === 'planning' ? 'Counter' : props.section.name));
 
 function toggleMenu() {
@@ -145,6 +150,12 @@ async function cast() {
             </li>
           </template>
           <template v-if="section.slug === 'planning'">
+            <li role="none">
+              <button role="menuitem" class="dropdown__item" @click="emit('toggleFocus'); closeMenu()">
+                <i :class="['fas', focusMode ? 'fa-compress-alt' : 'fa-expand-alt']"></i>
+                {{ focusMode ? 'Exit focus mode' : 'Focus mode' }}
+              </button>
+            </li>
             <li role="none">
               <button role="menuitem" class="dropdown__item" @click="moveAllToList('Today', 'Next')">
                 <i class="fas fa-arrow-right"></i>
@@ -325,6 +336,15 @@ async function cast() {
   .section--planning .section__body {
     overflow-x: hidden;
   }
+}
+
+/* Focus mode: hide Next, expand Today to fill section */
+.section--focus .list-next {
+  display: none;
+}
+
+.section--focus .section__body {
+  justify-content: flex-start;
 }
 
 /* Tablet + mobile */
