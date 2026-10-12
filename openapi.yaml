@@ -1199,6 +1199,75 @@ paths:
                     format: date-time
                     nullable: true
 
+  # --- Stats ---
+  /stats:
+    get:
+      summary: Get daily commitment, completion, and percentage counts for the last 30 days
+      tags: [Stats]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: tz
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Local timezone offset in minutes (JS getTimezoneOffset()), used to group by local date
+      responses:
+        "200":
+          description: Daily statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  commitments:
+                    type: array
+                    items:
+                      type: integer
+                  completions:
+                    type: array
+                    items:
+                      type: integer
+                  percentages:
+                    type: array
+                    items:
+                      type: integer
+
+  /stats/burndown:
+    get:
+      summary: Get today's open-commitment burn-down from 8am local time
+      tags: [Stats]
+      parameters:
+        - $ref: "#/components/parameters/token"
+        - name: tz
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Local timezone offset in minutes (JS getTimezoneOffset()), used to label sample times
+      responses:
+        "200":
+          description: Burn-down series of open commitments over the day
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  times:
+                    type: array
+                    items:
+                      type: string
+                    description: Sample times in local "HH:MM" format (every 30 minutes from 8:00am)
+                  counts:
+                    type: array
+                    items:
+                      type: integer
+                    description: Number of committed, incomplete tasks at each sample time
+
   # --- Admin ---
   /admin/drop:
     post:

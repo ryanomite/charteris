@@ -22,15 +22,26 @@ interface StatsData {
   percentages: number[];
 }
 
+interface BurndownData {
+  times: string[];
+  counts: number[];
+}
+
 const data = ref<StatsData | null>(null);
+const burndown = ref<BurndownData | null>(null);
 const loading = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 async function fetchStats() {
   loading.value = true;
   try {
-    const { data: d } = await api.get<StatsData>('/stats', { params: { tz: new Date().getTimezoneOffset() } });
-    data.value = d;
+    const tz = new Date().getTimezoneOffset();
+    const [statsRes, burndownRes] = await Promise.all([
+      api.get<StatsData>('/stats', { params: { tz } }),
+      api.get<BurndownData>('/stats/burndown', { params: { tz } }),
+    ]);
+    data.value = statsRes.data;
+    burndown.value = burndownRes.data;
   } catch (err) {
     console.error('Stats fetch failed:', err);
   } finally {
@@ -193,6 +204,42 @@ const percentChartOptions = computed(() => ({
     },
   },
 }));
+
+const burndownChartData = computed(() => ({
+  labels: burndown.value?.times ?? [],
+  datasets: [
+    {
+      label: 'Open commitments',
+      data: burndown.value?.counts ?? [],
+      borderColor: '#ff69b4',
+      backgroundColor: 'transparent',
+      borderWidth: 3,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+    },
+  ],
+}));
+
+const burndownChartOptions = computed(() => ({
+  ...baseChartOptions,
+  plugins: {
+    ...baseChartOptions.plugins,
+    legend: { display: false },
+  },
+  scales: {
+    ...baseChartOptions.scales,
+    y: {
+      ticks: {
+        color: '#a0a0a0',
+        font: { size: 10 },
+        precision: 0,
+      },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+      beginAtZero: true,
+    },
+  },
+}));
 </script>
 
 <template>
@@ -239,6 +286,14 @@ const percentChartOptions = computed(() => ({
           <div class="stats-section__chart-label">Completion %</div>
           <div class="stats-section__chart">
             <Line :data="percentChartData" :options="(percentChartOptions as any)" />
+          </div>
+        </div>
+
+        <!-- Chart 3: Today's burn-down -->
+        <div class="stats-section__chart-wrap">
+          <div class="stats-section__chart-label">Today's Burn Down</div>
+          <div class="stats-section__chart">
+            <Line :data="burndownChartData" :options="(burndownChartOptions as any)" />
           </div>
         </div>
       </template>
