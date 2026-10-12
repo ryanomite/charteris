@@ -211,7 +211,7 @@ const burndownChartData = computed(() => ({
     {
       label: 'Open commitments',
       data: burndown.value?.counts ?? [],
-      borderColor: '#ff69b4',
+      borderColor: '#ff8c00',
       backgroundColor: 'transparent',
       borderWidth: 3,
       pointRadius: 0,
@@ -308,7 +308,7 @@ const burndownChartOptions = computed(() => ({
   background: #02a0f022;
   border-radius: var(--radius-section);
   overflow: hidden;
-  min-height: 620px;
+  min-height: 820px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
   min-width: 220px;
   flex: 1 1 0;
@@ -321,6 +321,7 @@ const burndownChartOptions = computed(() => ({
   padding: 0 16px 16px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .stats-section__header {
