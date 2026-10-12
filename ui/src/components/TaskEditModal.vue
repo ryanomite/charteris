@@ -43,6 +43,18 @@ const DAY_LABELS: Record<string, string> = {
   mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S',
 };
 
+// Weekday due-date shortcuts: label → JS getDay() value (Sunday omitted)
+const WEEKDAY_SHORTCUTS: Array<{ label: string; weekday: number }> = [
+  { label: 'M', weekday: 1 },
+  { label: 'T', weekday: 2 },
+  { label: 'W', weekday: 3 },
+  { label: 'R', weekday: 4 },
+  { label: 'F', weekday: 5 },
+  { label: 'S', weekday: 6 },
+];
+
+const LABEL_SHORTCUTS = ['home', '5min', 'top', 'pm', 'am'];
+
 // Sync local state when task changes
 watch(() => task.value, (t) => {
   if (t) {
@@ -108,6 +120,14 @@ function setDueToday() {
 function setDueTomorrow() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
+  dueDate.value = formatLocalDate(d);
+}
+
+function setDueNextWeekday(weekday: number) {
+  const d = new Date();
+  let diff = (weekday - d.getDay() + 7) % 7;
+  if (diff === 0) diff = 7;
+  d.setDate(d.getDate() + diff);
   dueDate.value = formatLocalDate(d);
 }
 
@@ -227,6 +247,25 @@ async function createAndAddLabel() {
 
 function removeLabel(labelId: string) {
   taskLabels.value = taskLabels.value.filter(id => id !== labelId);
+}
+
+async function addLabelByName(rawName: string) {
+  const name = normalizeLabelName(rawName);
+  if (!name) return;
+  try {
+    const existing = store.labels.find(l => l.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      if (!taskLabels.value.includes(existing._id)) taskLabels.value.push(existing._id);
+    } else {
+      const { data } = await api.post('/labels', { name });
+      store.upsertLabel(data);
+      if (!taskLabels.value.includes(data._id)) taskLabels.value.push(data._id);
+    }
+    labelSearch.value = '';
+    showLabelDropdown.value = false;
+  } catch (err) {
+    console.error('Add label failed:', err);
+  }
 }
 
 function addSubtask() {
@@ -559,6 +598,17 @@ function onOverlayClick(e: MouseEvent) {
                 </div>
               </div>
             </div>
+            <div class="modal__label-shortcuts">
+              <button
+                v-for="name in LABEL_SHORTCUTS"
+                :key="name"
+                type="button"
+                class="modal__date-shortcut"
+                @click="addLabelByName(name)"
+              >
+                {{ name }}
+              </button>
+            </div>
           </div>
 
           <!-- Due Date -->
@@ -570,9 +620,18 @@ function onOverlayClick(e: MouseEvent) {
                 type="date"
                 class="modal__date"
               />
-              <button type="button" class="modal__date-shortcut" @click="setDueToday(); saveAfterDateShortcut()">Today</button>
-              <button type="button" class="modal__date-shortcut" @click="setDueTomorrow(); saveAfterDateShortcut()">Tomorrow</button>
-              <button type="button" class="modal__date-shortcut" @click="clearDueDate(); saveAfterDateShortcut()">Clear</button>
+              <button type="button" class="modal__date-shortcut" @click="setDueToday(); saveAfterDateShortcut()">0</button>
+              <button type="button" class="modal__date-shortcut" @click="setDueTomorrow(); saveAfterDateShortcut()">+1</button>
+              <button
+                v-for="wd in WEEKDAY_SHORTCUTS"
+                :key="wd.label"
+                type="button"
+                class="modal__date-shortcut"
+                @click="setDueNextWeekday(wd.weekday); saveAfterDateShortcut()"
+              >
+                {{ wd.label }}
+              </button>
+              <button type="button" class="modal__date-shortcut" @click="clearDueDate(); saveAfterDateShortcut()">X</button>
             </div>
           </div>
 
@@ -859,6 +918,13 @@ function onOverlayClick(e: MouseEvent) {
 
 .label-input-wrap {
   position: relative;
+}
+
+.modal__label-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .label-input {
