@@ -15,6 +15,8 @@ import api from '../services/api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
+const emit = defineEmits<{ (e: 'hide'): void }>();
+
 interface StatsData {
   dates: string[];
   commitments: number[];
@@ -245,7 +247,7 @@ const burndownChartOptions = computed(() => ({
 <template>
   <section class="stats-section">
     <div class="stats-section__header">
-      <div class="stats-section__title">
+      <div class="stats-section__title" title="Hide Statistics" @click="emit('hide')">
         <i class="fas fa-chart-line"></i>
         <span>Statistics</span>
       </div>
@@ -339,6 +341,12 @@ const burndownChartOptions = computed(() => ({
   font-weight: 700;
   font-size: 1rem;
   color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity var(--transition-default);
+}
+
+.stats-section__title:hover {
+  opacity: 0.7;
 }
 
 .stats-section__refresh {

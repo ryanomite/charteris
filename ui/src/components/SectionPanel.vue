@@ -11,6 +11,7 @@ const emit = defineEmits<{
   (e: 'openCard', card: ICard): void;
   (e: 'openImport', payload?: { listId?: string }): void;
   (e: 'toggleFocus'): void;
+  (e: 'hideSection'): void;
 }>();
 const store = useTaskStore();
 const { clearSelection } = useSelection();
@@ -100,7 +101,7 @@ async function cast() {
 <template>
   <section :class="sectionClass" :style="{ background: bgVar }">
     <div class="section__header">
-      <div class="section__title">
+      <div class="section__title" :title="`Hide ${displaySectionName}`" @click="emit('hideSection')">
         <i :class="['fas', section.icon]"></i>
         <span>{{ displaySectionName }}</span>
       </div>
@@ -215,6 +216,12 @@ async function cast() {
   gap: 8px;
   font-weight: 700;
   font-size: 1rem;
+  cursor: pointer;
+  transition: opacity var(--transition-default);
+}
+
+.section__title:hover {
+  opacity: 0.7;
 }
 
 .section__title i {

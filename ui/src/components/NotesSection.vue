@@ -5,6 +5,8 @@ import { renderMarkdown } from '../utils/markdown';
 
 const store = useTaskStore();
 
+const emit = defineEmits<{ (e: 'hide'): void }>();
+
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const draft = ref('');
 const editing = ref(false);
@@ -137,7 +139,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="notes-section">
     <div class="notes-section__header">
-      <div class="notes-section__title">
+      <div class="notes-section__title" title="Hide Notes" @click="emit('hide')">
         <i class="fas fa-note-sticky"></i>
         <span>Notes</span>
       </div>
@@ -214,6 +216,12 @@ onBeforeUnmount(() => {
   font-weight: 700;
   font-size: 1rem;
   color: var(--text-primary);
+  cursor: pointer;
+  transition: opacity var(--transition-default);
+}
+
+.notes-section__title:hover {
+  opacity: 0.7;
 }
 
 .notes-section__status {

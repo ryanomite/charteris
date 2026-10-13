@@ -201,7 +201,7 @@ onUnmounted(() => {
       <img src="/charteris-white.svg" alt="Charteris" class="app-header__logo" />
     </header>
     <div class="dashboard">
-      <NotesSection v-show="notesVisible" />
+      <NotesSection v-show="notesVisible" @hide="notesVisible = false" />
       <div class="dashboard__sections">
         <SectionPanel
           v-for="section in store.sortedSections"
@@ -212,8 +212,9 @@ onUnmounted(() => {
           @open-card="openCard"
           @open-import="openImport"
           @toggle-focus="focusMode = !focusMode"
+          @hide-section="toggleSection(section.slug)"
         />
-        <StatisticsSection v-show="statsVisible" />
+        <StatisticsSection v-show="statsVisible" @hide="statsVisible = false" />
       </div>
     </div>
   </div>
