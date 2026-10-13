@@ -120,16 +120,6 @@ function applyPreset(hash: string) {
     </template>
 
     <button
-      class="section-nav__btn"
-      :class="{ 'section-nav__btn--hidden': !notesVisible }"
-      :title="notesVisible ? 'Hide Notes' : 'Show Notes'"
-      @click="emit('toggle-notes')"
-    >
-      <i class="fas fa-note-sticky"></i>
-    </button>
-    <span class="section-nav__divider"></span>
-
-    <button
       v-for="section in sections"
       :key="section._id"
       :class="['section-nav__btn', { 'section-nav__btn--hidden': hiddenSlugs.has(section.slug) }]"
@@ -147,6 +137,16 @@ function applyPreset(hash: string) {
       @click="emit('toggle-stats')"
     >
       <i class="fas fa-chart-line"></i>
+    </button>
+
+    <!-- Notes toggle -->
+    <button
+      class="section-nav__btn"
+      :class="{ 'section-nav__btn--hidden': !notesVisible }"
+      :title="notesVisible ? 'Hide Notes' : 'Show Notes'"
+      @click="emit('toggle-notes')"
+    >
+      <i class="fas fa-note-sticky"></i>
     </button>
 
     <!-- Filter -->

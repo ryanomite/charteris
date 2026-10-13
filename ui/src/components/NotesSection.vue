@@ -398,6 +398,7 @@ onBeforeUnmount(() => {
 
   .notes-section__body {
     flex-direction: column;
+    min-height: 200px;
   }
 
   .notes-section__textarea {
