@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import { renderMarkdown } from '../utils/markdown';
 
@@ -7,6 +7,7 @@ const store = useTaskStore();
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 const draft = ref('');
+const editing = ref(false);
 const status = ref<'idle' | 'unsaved' | 'saving' | 'saved' | 'error'>('idle');
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -111,6 +112,10 @@ watch(
   }
 );
 
+watch(editing, (value) => {
+  if (value) nextTick(() => textareaRef.value?.focus());
+});
+
 onMounted(async () => {
   try {
     await store.fetchNotes();
@@ -136,13 +141,24 @@ onBeforeUnmount(() => {
         <i class="fas fa-note-sticky"></i>
         <span>Notes</span>
       </div>
-      <span class="notes-section__status" :class="`notes-section__status--${status}`">
-        {{ statusLabel }}
-      </span>
+      <div class="notes-section__header-actions">
+        <span class="notes-section__status" :class="`notes-section__status--${status}`">
+          {{ statusLabel }}
+        </span>
+        <button
+          type="button"
+          class="notes-section__edit"
+          :class="{ 'notes-section__edit--active': editing }"
+          :title="editing ? 'Hide editor' : 'Edit notes'"
+          @click="editing = !editing"
+        >
+          <i :class="['fas', editing ? 'fa-eye' : 'fa-pen']"></i>
+        </button>
+      </div>
     </div>
 
     <div class="notes-section__body">
-      <div class="notes-section__pane">
+      <div v-show="editing" class="notes-section__pane">
         <div class="notes-section__toolbar">
           <button type="button" title="Heading 1" @click="prefixLine('# ')"><i class="fas fa-heading"></i><sub class="notes-section__sub">1</sub></button>
           <button type="button" title="Heading 2" @click="prefixLine('## ')"><i class="fas fa-heading"></i><sub class="notes-section__sub">2</sub></button>
@@ -164,7 +180,6 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="notes-section__preview-wrap">
-        <div class="notes-section__preview-label">Preview</div>
         <div v-if="draft.trim()" class="notes-section__preview markdown-body" v-html="preview"></div>
         <div v-else class="notes-section__preview notes-section__preview--empty">Nothing to preview yet.</div>
       </div>
@@ -205,6 +220,34 @@ onBeforeUnmount(() => {
   font-size: 0.72rem;
   color: var(--text-secondary);
   letter-spacing: 0.03em;
+}
+
+.notes-section__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notes-section__edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--icon-ui);
+  font-size: 0.8rem;
+  transition: background var(--transition-default), color var(--transition-default);
+}
+
+.notes-section__edit:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.notes-section__edit--active {
+  background: rgba(245, 166, 35, 0.2);
+  color: #f5a623;
 }
 
 .notes-section__status--saved {
@@ -287,15 +330,6 @@ onBeforeUnmount(() => {
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
-}
-
-.notes-section__preview-label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 0 2px 6px;
-  flex-shrink: 0;
 }
 
 .notes-section__preview {
