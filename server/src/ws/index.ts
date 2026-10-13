@@ -8,7 +8,8 @@ export type WSEventType =
   | 'card:created' | 'card:updated' | 'card:deleted' | 'card:moved' | 'card:reordered'
   | 'list:created' | 'list:updated' | 'list:deleted' | 'list:reordered'
   | 'label:created' | 'label:updated' | 'label:deleted'
-  | 'settings:updated';
+  | 'settings:updated'
+  | 'notes:updated';
 
 let wss: WebSocketServer;
 

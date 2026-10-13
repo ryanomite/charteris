@@ -4,13 +4,14 @@ import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import type { ISection, IList } from '../types';
 
-const props = defineProps<{ hiddenSlugs: Set<string>; modelValue?: string; statsVisible?: boolean }>();
+const props = defineProps<{ hiddenSlugs: Set<string>; modelValue?: string; statsVisible?: boolean; notesVisible?: boolean }>();
 const emit = defineEmits<{
   (e: 'toggle', slug: string): void;
   (e: 'openImport', payload?: { listId?: string }): void;
   (e: 'openGlobalSettings'): void;
   (e: 'update:modelValue', value: string): void;
   (e: 'toggle-stats'): void;
+  (e: 'toggle-notes'): void;
 }>();
 
 const store = useTaskStore();
@@ -117,6 +118,16 @@ function applyPreset(hash: string) {
       </a>
       <span class="section-nav__divider"></span>
     </template>
+
+    <button
+      class="section-nav__btn"
+      :class="{ 'section-nav__btn--hidden': !notesVisible }"
+      :title="notesVisible ? 'Hide Notes' : 'Show Notes'"
+      @click="emit('toggle-notes')"
+    >
+      <i class="fas fa-note-sticky"></i>
+    </button>
+    <span class="section-nav__divider"></span>
 
     <button
       v-for="section in sections"

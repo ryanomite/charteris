@@ -23,6 +23,7 @@ import dashboardRoutes from './routes/dashboard';
 import importRoutes from './routes/import';
 import publicRoutes from './routes/public';
 import settingsRoutes from './routes/settings';
+import notesRoutes from './routes/notes';
 import statsRoutes from './routes/stats';
 
 const app = express();
@@ -56,6 +57,7 @@ app.use('/api/v1/labels', labelRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/notes', notesRoutes);
 app.use('/api/v1/import', importRoutes);
 app.use('/api/v1/public', publicRoutes);
 app.use('/api/v1/stats', statsRoutes);

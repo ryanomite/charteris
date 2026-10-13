@@ -97,3 +97,8 @@ export interface GlobalSettings {
   cssOverrides: string;
   viewPresets: ViewPreset[];
 }
+
+export interface Notes {
+  content: string;
+  updatedAt: string;
+}

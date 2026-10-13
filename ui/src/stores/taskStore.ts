@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import api from '../services/api';
-import type { ISection, IList, ITask, ICard, ILabel, IGlobalSettings } from '../types';
+import type { ISection, IList, ITask, ICard, ILabel, IGlobalSettings, INotes } from '../types';
 
 const DEFAULT_GLOBAL_SETTINGS: IGlobalSettings = {
   hideCommittedCards: false,
@@ -18,6 +18,7 @@ export const useTaskStore = defineStore('tasks', () => {
   const cards = ref<ICard[]>([]);
   const labels = ref<ILabel[]>([]);
   const globalSettings = ref<IGlobalSettings>({ ...DEFAULT_GLOBAL_SETTINGS });
+  const notes = ref<INotes>({ content: '', updatedAt: '' });
   const loading = ref(false);
   const showArchived = ref(false);
   const showArchivedLists = ref(false);
@@ -51,6 +52,21 @@ export const useTaskStore = defineStore('tasks', () => {
 
   function applyGlobalSettings(settings: IGlobalSettings) {
     globalSettings.value = settings;
+  }
+
+  async function fetchNotes() {
+    const { data } = await api.get('/notes');
+    notes.value = data;
+  }
+
+  async function updateNotes(content: string) {
+    const { data } = await api.put('/notes', { content });
+    notes.value = data;
+    return data as INotes;
+  }
+
+  function applyNotes(next: INotes) {
+    notes.value = next;
   }
 
   function isTaskCommitted(taskId: string): boolean {
@@ -219,9 +235,10 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   return {
-    sections, lists, tasks, cards, labels, globalSettings, loading, showArchived, showArchivedLists, lastInteractedListId,
+    sections, lists, tasks, cards, labels, globalSettings, notes, loading, showArchived, showArchivedLists, lastInteractedListId,
     sortedSections, fetchDashboard,
     fetchGlobalSettings, updateGlobalSettings, applyGlobalSettings,
+    fetchNotes, updateNotes, applyNotes,
     listsForSection, cardsForList, taskById, labelById, labelsForTask,
     activeCardCountForList,
     isTaskCommitted,

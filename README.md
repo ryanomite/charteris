@@ -20,6 +20,7 @@ It's also built as a developer-friendly platform—with a full REST API, MCP ser
 
 ### Features
 - **Dual-Presence Logic:** Tasks exist in project lists and daily views synchronously.
+- **Notes:** A built-in Markdown notepad (with live preview) for freeform reference material, toggled from the top navigation.
 - **The Adjourn Ritual:** A manual or automated daily reset to keep your Briefing focused and fresh.
 - **Cast Due Tasks:** A shortcut to instantly identify and move urgent items from Cabinet into Briefing for review.
 - **Progress Visualization:** A real-time progress indicator at the top of Briefing to track daily resolution.

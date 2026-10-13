@@ -7,6 +7,7 @@ import { useWebSocket } from '../composables/useWebSocket';
 import { runRecurrenceChecks, needsRecurrenceCheck } from '../composables/useRecurrence';
 import SectionPanel from '../components/SectionPanel.vue';
 import MobileNav from '../components/MobileNav.vue';
+import NotesSection from '../components/NotesSection.vue';
 import StatisticsSection from '../components/StatisticsSection.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
 import TaskImportModal from '../components/TaskImportModal.vue';
@@ -18,6 +19,7 @@ const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
 const filterQuery = ref('');
 const statsVisible = ref(false);
+const notesVisible = ref(true);
 const focusMode = ref(false);
 provide('filterQuery', filterQuery);
 provide('focusMode', focusMode);
@@ -29,6 +31,7 @@ function readFragment() {
   return {
     hiddenSlugs: new Set(params.get('h')?.split(',').filter(Boolean) ?? []),
     statsVisible: params.get('stats') === '1',
+    notesVisible: params.get('notes') !== '0',
     focusMode: params.get('focus') === '1',
     filterQuery: params.get('q') ?? '',
   };
@@ -39,6 +42,7 @@ function writeFragment() {
   const hidden = [...hiddenSlugs.value];
   if (hidden.length) params.set('h', hidden.join(','));
   if (statsVisible.value) params.set('stats', '1');
+  if (!notesVisible.value) params.set('notes', '0');
   if (focusMode.value) params.set('focus', '1');
   if (filterQuery.value) params.set('q', filterQuery.value);
   const hash = params.toString();
@@ -47,6 +51,7 @@ function writeFragment() {
 
 watch(hiddenSlugs, writeFragment, { deep: true });
 watch(statsVisible, writeFragment);
+watch(notesVisible, writeFragment);
 watch(focusMode, writeFragment);
 watch(filterQuery, writeFragment);
 const importOpen = ref(false);
@@ -144,6 +149,7 @@ onMounted(async () => {
   if (fragment) {
     hiddenSlugs.value = fragment.hiddenSlugs;
     statsVisible.value = fragment.statsVisible;
+    notesVisible.value = fragment.notesVisible;
     focusMode.value = fragment.focusMode;
     filterQuery.value = fragment.filterQuery;
   }
@@ -195,17 +201,20 @@ onUnmounted(() => {
       <img src="/charteris-white.svg" alt="Charteris" class="app-header__logo" />
     </header>
     <div class="dashboard">
-      <SectionPanel
-        v-for="section in store.sortedSections"
-        v-show="isSectionVisible(section.slug)"
-        :key="section._id"
-        :section="section"
-        :focusMode="focusMode"
-        @open-card="openCard"
-        @open-import="openImport"
-        @toggle-focus="focusMode = !focusMode"
-      />
-      <StatisticsSection v-show="statsVisible" />
+      <NotesSection v-show="notesVisible" />
+      <div class="dashboard__sections">
+        <SectionPanel
+          v-for="section in store.sortedSections"
+          v-show="isSectionVisible(section.slug)"
+          :key="section._id"
+          :section="section"
+          :focusMode="focusMode"
+          @open-card="openCard"
+          @open-import="openImport"
+          @toggle-focus="focusMode = !focusMode"
+        />
+        <StatisticsSection v-show="statsVisible" />
+      </div>
     </div>
   </div>
   <div class="dashboard-loading" v-else>
@@ -215,10 +224,12 @@ onUnmounted(() => {
     :hiddenSlugs="hiddenSlugs"
     v-model="filterQuery"
     :statsVisible="statsVisible"
+    :notesVisible="notesVisible"
     @toggle="toggleSection"
     @open-import="openImport"
     @open-global-settings="openGlobalSettings"
     @toggle-stats="statsVisible = !statsVisible"
+    @toggle-notes="notesVisible = !notesVisible"
   />
   <TaskEditModal :card="editingCard" @close="editingCard = null" @open="openCard" />
   <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />
@@ -247,9 +258,18 @@ onUnmounted(() => {
 
 .dashboard {
   display: flex;
+  flex-direction: column;
   flex: 1;
   gap: var(--gap-main);
   padding: var(--gap-main);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.dashboard__sections {
+  display: flex;
+  flex: 1;
+  gap: var(--gap-main);
   overflow: hidden;
   min-height: 0;
 }
@@ -278,6 +298,11 @@ onUnmounted(() => {
     overflow: visible;
     padding-bottom: var(--gap-main);
   }
+
+  .dashboard__sections {
+    flex-direction: column;
+    overflow: visible;
+  }
 }
 
 @media (min-width: 769px) and (orientation: portrait) {
@@ -290,6 +315,11 @@ onUnmounted(() => {
     flex-direction: column;
     overflow: visible;
     padding-bottom: var(--gap-main);
+  }
+
+  .dashboard__sections {
+    flex-direction: column;
+    overflow: visible;
   }
 }
 

@@ -64,6 +64,11 @@ export interface IGlobalSettings {
   viewPresets: IViewPreset[];
 }
 
+export interface INotes {
+  content: string;
+  updatedAt: string;
+}
+
 export interface IDashboard {
   sections: ISection[];
   lists: IList[];

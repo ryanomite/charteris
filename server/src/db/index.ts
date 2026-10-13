@@ -119,6 +119,12 @@ function createTables(): void {
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS notes (
+      key TEXT PRIMARY KEY,
+      content TEXT NOT NULL DEFAULT '',
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS task_events (
       id TEXT PRIMARY KEY,
       taskId TEXT NOT NULL,

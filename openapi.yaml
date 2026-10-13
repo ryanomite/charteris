@@ -178,6 +178,16 @@ components:
           type: string
           description: URL hash content (without #), e.g. 'h=inbox&stats=1'
 
+    Notes:
+      type: object
+      properties:
+        content:
+          type: string
+          description: Markdown source for the notes document
+        updatedAt:
+          type: string
+          format: date-time
+
 paths:
   # --- Sections ---
   /sections:
@@ -353,6 +363,49 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/ViewPreset"
+
+  /notes:
+    get:
+      summary: Get the notes document
+      tags: [Notes]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Notes object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notes"
+    put:
+      summary: Update the notes document
+      tags: [Notes]
+      parameters:
+        - $ref: "#/components/parameters/token"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: Markdown source for the notes document
+      responses:
+        "200":
+          description: Updated notes object
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notes"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # --- Lists ---
   /lists:

@@ -116,6 +116,10 @@ export function useWebSocket() {
         store.applyGlobalSettings(data);
         break;
 
+      case 'notes:updated':
+        store.applyNotes(data);
+        break;
+
       default:
         console.log('[WS] Unknown event:', event);
     }
