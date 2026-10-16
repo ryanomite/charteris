@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="notes-section">
+  <section class="notes-section" :class="{ 'notes-section--editing': editing }">
     <div class="notes-section__header">
       <div class="notes-section__title" title="Hide Notes" @click="emit('hide')">
         <i class="fas fa-note-sticky"></i>
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
         ></textarea>
       </div>
 
-      <div class="notes-section__preview-wrap">
+      <div class="notes-section__preview-wrap" @click="editing = !editing">
         <div v-if="draft.trim()" class="notes-section__preview markdown-body" v-html="preview"></div>
         <div v-else class="notes-section__preview notes-section__preview--empty">Nothing to preview yet.</div>
       </div>
@@ -197,8 +197,12 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-section);
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0, 0, 0, 0.2);
-  height: 320px;
+  height: auto;
   flex: 0 0 auto;
+}
+
+.notes-section--editing {
+  height: 320px;
 }
 
 .notes-section__header {
@@ -341,8 +345,9 @@ onBeforeUnmount(() => {
 }
 
 .notes-section__preview {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 2.6em;
+  max-height: 360px;
   overflow-y: auto;
   padding: 10px 12px;
   border-radius: 8px;
@@ -351,6 +356,18 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
   font-size: 0.85rem;
   line-height: 1.55;
+  cursor: pointer;
+  transition: border-color var(--transition-default);
+}
+
+.notes-section__preview:hover {
+  border-color: rgba(245, 166, 35, 0.5);
+}
+
+.notes-section--editing .notes-section__preview {
+  min-height: 0;
+  max-height: none;
+  cursor: default;
 }
 
 .notes-section__preview--empty {
@@ -400,13 +417,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
-  .notes-section {
+  .notes-section--editing {
     height: auto;
   }
 
   .notes-section__body {
     flex-direction: column;
-    min-height: 200px;
   }
 
   .notes-section__textarea {
@@ -414,8 +430,7 @@ onBeforeUnmount(() => {
   }
 
   .notes-section__preview {
-    min-height: 120px;
-    max-height: 220px;
+    max-height: 240px;
   }
 }
 </style>

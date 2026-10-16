@@ -157,6 +157,14 @@ const recentCompletionPct = computed(() => {
   const recent = movingAvg14.value.at(-1);
   return recent == null ? null : Math.round(recent);
 });
+const completionTrend = computed<'up' | 'down' | null>(() => {
+  const recent = recentCompletionPct.value;
+  if (recent == null) return null;
+  const diff = todayCompletionPct.value - recent;
+  if (diff > 0) return 'up';
+  if (diff < 0) return 'down';
+  return null;
+});
 const currentDayCommitments = computed(() => data.value?.commitments.at(-1) ?? 0);
 
 const percentChartData = computed(() => ({
@@ -213,7 +221,7 @@ const burndownChartData = computed(() => ({
     {
       label: 'Open commitments',
       data: burndown.value?.counts ?? [],
-      borderColor: '#ff8c00',
+      borderColor: '#ba00ff',
       backgroundColor: 'transparent',
       borderWidth: 3,
       pointRadius: 0,
@@ -263,7 +271,16 @@ const burndownChartOptions = computed(() => ({
         <div class="stats-section__summary-grid">
           <article class="stats-section__summary-card">
             <span class="stats-section__summary-label">Today's completion %</span>
-            <strong class="stats-section__summary-value">{{ todayCompletionPct }}%</strong>
+            <strong class="stats-section__summary-value">
+              {{ todayCompletionPct }}%
+              <i
+                v-if="completionTrend"
+                class="fas stats-section__trend"
+                :class="completionTrend === 'up' ? 'fa-caret-up' : 'fa-caret-down'"
+                :style="{ color: completionTrend === 'up' ? 'limegreen' : 'orangered' }"
+                :title="completionTrend === 'up' ? 'Above recent average' : 'Below recent average'"
+              ></i>
+            </strong>
           </article>
           <article class="stats-section__summary-card">
             <span class="stats-section__summary-label">Recent completion %</span>
@@ -405,6 +422,12 @@ const burndownChartOptions = computed(() => ({
   color: #ffffff;
   font-size: 2.5rem;
   line-height: 1.1;
+}
+
+.stats-section__trend {
+  margin-left: 8px;
+  font-size: 0.5em;
+  vertical-align: middle;
 }
 
 .stats-section__chart-wrap {
