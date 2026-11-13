@@ -87,7 +87,11 @@ async function adjourn() {
 async function cast() {
   try {
     const now = new Date();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const { data } = await api.post('/sections/board/cast', {
+      timeZone: tz,
+      today,
       localHour: now.getHours(),
       localWeekday: now.getDay(),
     });

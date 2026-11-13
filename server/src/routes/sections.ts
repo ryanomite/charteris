@@ -37,12 +37,9 @@ function evaluateCastingRule(
   listNames: string[],
   localHour: number,
   localWeekday: number,
+  todayYmd: string,
+  tomorrowYmd: string,
 ): boolean {
-  const todayDate = startOfToday();
-  const tomorrowDate = new Date(todayDate);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const due = parseYmd(task.dueDate);
-
   const hasLabel = (name: string) => labelNames.some(l => l.toLowerCase() === name.toLowerCase());
   const inList = (name: string) => listNames.some(l => l.toLowerCase() === name.toLowerCase());
   const regex = (pattern: string, value = '', flags = 'i') => {
@@ -52,16 +49,18 @@ function evaluateCastingRule(
       return false;
     }
   };
-  const isDueToday = () => !!due && due.getTime() === todayDate.getTime();
-  const isDueTomorrow = () => !!due && due.getTime() === tomorrowDate.getTime();
-  const isOverdue = () => !!due && due.getTime() < todayDate.getTime();
+  const isDueToday = () => !!task.dueDate && task.dueDate === todayYmd;
+  const isDueTomorrow = () => !!task.dueDate && task.dueDate === tomorrowYmd;
+  const isOverdue = () => !!task.dueDate && task.dueDate < todayYmd;
   const daysUntilDue = () => {
-    if (!due) return null;
-    const ms = due.getTime() - todayDate.getTime();
-    return Math.floor(ms / (1000 * 60 * 60 * 24));
+    if (!task.dueDate) return null;
+    const a = Date.parse(task.dueDate + 'T00:00:00Z');
+    const b = Date.parse(todayYmd + 'T00:00:00Z');
+    if (Number.isNaN(a) || Number.isNaN(b)) return null;
+    return Math.round((a - b) / (1000 * 60 * 60 * 24));
   };
-  const today = () => toYmdLocal(todayDate);
-  const tomorrow = () => toYmdLocal(tomorrowDate);
+  const today = () => todayYmd;
+  const tomorrow = () => tomorrowYmd;
   const currentHour = () => localHour;
   const currentWeekday = () => localWeekday;
 
@@ -189,14 +188,53 @@ router.post('/board/cast', (req: Request, res: Response) => {
   if (!todayList || !nextList) { res.status(500).json({ error: 'Today or Next list not found' }); return; }
 
   const now = new Date();
-  const bodyHour = Number(req.body?.localHour);
-  const bodyWeekday = Number(req.body?.localWeekday);
-  const localHour = Number.isFinite(bodyHour) && bodyHour >= 0 && bodyHour <= 23
-    ? bodyHour
-    : now.getHours();
-  const localWeekday = Number.isFinite(bodyWeekday) && bodyWeekday >= 0 && bodyWeekday <= 6
-    ? bodyWeekday
-    : now.getDay();
+  const tz = typeof req.body?.timeZone === 'string' ? req.body.timeZone : null;
+  let validTz = false;
+  if (tz) {
+    try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); validTz = true; } catch { validTz = false; }
+  }
+
+  const weekdayNameToNum: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  function tzParts(date: Date, timeZone: string) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', weekday: 'short',
+      hour12: false,
+    });
+    const parts = dtf.formatToParts(date);
+    const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+    const ymd = `${get('year')}-${get('month')}-${get('day')}`;
+    const hour = Number(get('hour')) % 24;
+    const weekday = weekdayNameToNum[get('weekday')] ?? 0;
+    return { hour: Number.isFinite(hour) ? hour : 0, weekday, ymd };
+  }
+
+  let localHour: number;
+  let localWeekday: number;
+  let todayYmd: string;
+  let tomorrowYmd: string;
+
+  if (validTz && tz) {
+    const p = tzParts(now, tz);
+    localHour = p.hour;
+    localWeekday = p.weekday;
+    todayYmd = p.ymd;
+    const p2 = tzParts(new Date(now.getTime() + 24 * 60 * 60 * 1000), tz);
+    tomorrowYmd = p2.ymd;
+  } else {
+    const bodyHour = Number(req.body?.localHour);
+    const bodyWeekday = Number(req.body?.localWeekday);
+    localHour = Number.isFinite(bodyHour) && bodyHour >= 0 && bodyHour <= 23 ? bodyHour : now.getHours();
+    localWeekday = Number.isFinite(bodyWeekday) && bodyWeekday >= 0 && bodyWeekday <= 6 ? bodyWeekday : now.getDay();
+    const bodyToday = typeof req.body?.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.body.today)
+      ? req.body.today
+      : null;
+    todayYmd = bodyToday || toYmdLocal(now);
+    const td = new Date(todayYmd + 'T00:00:00Z');
+    td.setUTCDate(td.getUTCDate() + 1);
+    tomorrowYmd = td.toISOString().slice(0, 10);
+  }
 
   const settings = findGlobalSettings();
   const allLabels = findAllLabels();
@@ -221,13 +259,13 @@ router.post('/board/cast', (req: Request, res: Response) => {
   const eligibleToday = candidates.filter(task => {
     const labelNames = task.labels.map(id => labelNameById.get(id)).filter(Boolean) as string[];
     const listNames = listNamesByTaskId.get(task._id) || [];
-    return evaluateCastingRule(settings.castingRulesToday, task, labelNames, listNames, localHour, localWeekday);
+    return evaluateCastingRule(settings.castingRulesToday, task, labelNames, listNames, localHour, localWeekday, todayYmd, tomorrowYmd);
   });
 
   const eligibleTomorrow = candidates.filter(task => {
     const labelNames = task.labels.map(id => labelNameById.get(id)).filter(Boolean) as string[];
     const listNames = listNamesByTaskId.get(task._id) || [];
-    return evaluateCastingRule(settings.castingRulesNext, task, labelNames, listNames, localHour, localWeekday);
+    return evaluateCastingRule(settings.castingRulesNext, task, labelNames, listNames, localHour, localWeekday, todayYmd, tomorrowYmd);
   });
 
   // --- Today rule ---
