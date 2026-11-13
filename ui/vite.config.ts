@@ -40,7 +40,7 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      includeAssets: ['charteris-white-icon.svg', 'charteris-white.svg'],
+      includeAssets: ['charteris-white-icon.svg', 'charteris-white.svg', 'charteris-icon.svg'],
       manifest: {
         name: 'Charteris',
         short_name: 'Charteris',
@@ -52,13 +52,13 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: '/charteris-white-icon.svg',
+            src: '/charteris-icon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any',
           },
           {
-            src: '/charteris-white-icon.svg',
+            src: '/charteris-icon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'maskable',
