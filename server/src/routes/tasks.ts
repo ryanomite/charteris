@@ -223,19 +223,9 @@ router.put('/:id', (req: Request, res: Response) => {
       }
 
       if (!isDueToday && todayCard) {
-        const nextList = findAllLists({ sectionId: todayList.sectionId }).find(l => l.name === 'Next');
-        if (nextList) {
-          const nextCard = taskCards.find(c => c.listId === nextList._id);
-          if (!nextCard) {
-            const createdNextCard = insertCard({ taskId: updated._id, listId: nextList._id });
-            trackCommitmentTransition(updated._id, null, nextList._id);
-            broadcast('card:created', createdNextCard);
-          }
-
-          deleteCard(todayCard._id);
-          trackCommitmentTransition(updated._id, todayList._id, null);
-          broadcast('card:deleted', { _id: todayCard._id });
-        }
+        deleteCard(todayCard._id);
+        trackCommitmentTransition(updated._id, todayList._id, null);
+        broadcast('card:deleted', { _id: todayCard._id });
       }
     }
   }

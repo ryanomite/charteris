@@ -6,7 +6,6 @@ import type { ISection, IList, ITask, ICard, ILabel, IGlobalSettings, INotes } f
 const DEFAULT_GLOBAL_SETTINGS: IGlobalSettings = {
   hideCommittedCards: false,
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
-  castingRulesNext: 'isDueTomorrow()',
   cssOverrides: '',
   viewPresets: [],
 };
@@ -87,7 +86,7 @@ export const useTaskStore = defineStore('tasks', () => {
   // Get lists for a section, sorted by order (excluding archived unless showArchivedLists)
   function listsForSection(sectionId: string): IList[] {
     return lists.value
-      .filter(l => l.sectionId === sectionId && (!l.archived || showArchivedLists.value))
+      .filter(l => l.sectionId === sectionId && l.name.toLowerCase() !== 'next' && (!l.archived || showArchivedLists.value))
       .sort((a, b) => a.order - b.order);
   }
 

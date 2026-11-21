@@ -6,7 +6,6 @@ const SETTINGS_KEY = 'global';
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   hideCommittedCards: false,
   castingRulesToday: 'priority === 1 || isOverdue() || isDueToday()',
-  castingRulesNext: 'isDueTomorrow()',
   cssOverrides: '',
   viewPresets: [],
 };
@@ -24,9 +23,6 @@ export function findGlobalSettings(): GlobalSettings {
       castingRulesToday: typeof parsed.castingRulesToday === 'string' && parsed.castingRulesToday.trim()
         ? parsed.castingRulesToday
         : DEFAULT_GLOBAL_SETTINGS.castingRulesToday,
-      castingRulesNext: typeof parsed.castingRulesNext === 'string' && parsed.castingRulesNext.trim()
-        ? parsed.castingRulesNext
-        : DEFAULT_GLOBAL_SETTINGS.castingRulesNext,
       cssOverrides: typeof parsed.cssOverrides === 'string'
         ? parsed.cssOverrides
         : DEFAULT_GLOBAL_SETTINGS.cssOverrides,
@@ -47,7 +43,6 @@ export function updateGlobalSettings(patch: Partial<GlobalSettings>): GlobalSett
   const next: GlobalSettings = {
     hideCommittedCards: patch.hideCommittedCards ?? current.hideCommittedCards,
     castingRulesToday: patch.castingRulesToday?.trim() || current.castingRulesToday,
-    castingRulesNext: patch.castingRulesNext?.trim() || current.castingRulesNext,
     cssOverrides: patch.cssOverrides ?? current.cssOverrides,
     viewPresets: patch.viewPresets ?? current.viewPresets,
   };

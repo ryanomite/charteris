@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { findAllSections, findSectionById, findSectionBySlug } from '../queries/sections';
 import { findAllLists } from '../queries/lists';
-import { findAllCards, deleteCard, updateCard, maxCardOrder, insertCard } from '../queries/cards';
+import { findAllCards, deleteCard, insertCard } from '../queries/cards';
 import { findAllTasks, findTaskById, type TaskFilter } from '../queries/tasks';
 import { findAllLabels } from '../queries/labels';
 import { findGlobalSettings } from '../queries/settings';
@@ -123,18 +123,14 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
 
   const lists = findAllLists({ sectionId: section._id });
   const todayList = lists.find(l => l.name === 'Today');
-  const nextList = lists.find(l => l.name === 'Next');
-  if (!todayList || !nextList) {
-    res.status(500).json({ error: 'Today or Next list not found' });
+  if (!todayList) {
+    res.status(500).json({ error: 'Today list not found' });
     return;
   }
 
-  // Step 1: Remove completed/archived cards from both Today and Next
-  const bothListCards = [
-    ...findAllCards({ listId: todayList._id }),
-    ...findAllCards({ listId: nextList._id }),
-  ];
-  for (const card of bothListCards) {
+  // Step 1: Remove completed/archived cards from Today
+  const todayCards = findAllCards({ listId: todayList._id });
+  for (const card of todayCards) {
     const task = findTaskById(card.taskId);
     if (task && (task.completed || task.archived)) {
       trackCommitmentTransition(card.taskId, card.listId, null);
@@ -142,17 +138,7 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     }
   }
 
-  // Step 2: Remove non-orphaned cards from both Today and Next
-  const nextCardsAfterStep1 = findAllCards({ listId: nextList._id });
-  for (const card of nextCardsAfterStep1) {
-    const allTaskCards = findAllCards({ taskId: card.taskId });
-    const hasOtherCards = allTaskCards.some(c => c.listId !== nextList._id);
-    if (hasOtherCards) {
-      trackCommitmentTransition(card.taskId, card.listId, null);
-      deleteCard(card._id);
-    }
-  }
-
+  // Step 2: Remove non-orphaned cards from Today
   const todayCardsAfterStep1 = findAllCards({ listId: todayList._id });
   for (const card of todayCardsAfterStep1) {
     const allTaskCards = findAllCards({ taskId: card.taskId });
@@ -163,16 +149,15 @@ router.post('/planning/adjourn', (_req: Request, res: Response) => {
     }
   }
 
-  // Step 3: Move all remaining Today cards to Next
+  // Step 3: Clear remaining Today cards (no Next list anymore)
   const todayCardsAfterStep2 = findAllCards({ listId: todayList._id });
   for (const card of todayCardsAfterStep2) {
-    const nextOrder = maxCardOrder(nextList._id) + 1;
-    updateCard(card._id, { listId: nextList._id, order: nextOrder });
-    trackCommitmentTransition(card.taskId, todayList._id, nextList._id);
+    trackCommitmentTransition(card.taskId, todayList._id, null);
+    deleteCard(card._id);
   }
 
-  broadcast('cards:bulk-updated', { listIds: [todayList._id, nextList._id] });
-  res.json({ listIds: [todayList._id, nextList._id] });
+  broadcast('cards:bulk-updated', { listIds: [todayList._id] });
+  res.json({ listIds: [todayList._id] });
 });
 
 // POST /sections/board/cast
@@ -184,8 +169,7 @@ router.post('/board/cast', (req: Request, res: Response) => {
 
   const lists = findAllLists({ sectionId: planningSec._id });
   const todayList = lists.find(l => l.name === 'Today');
-  const nextList  = lists.find(l => l.name === 'Next');
-  if (!todayList || !nextList) { res.status(500).json({ error: 'Today or Next list not found' }); return; }
+  if (!todayList) { res.status(500).json({ error: 'Today list not found' }); return; }
 
   const now = new Date();
   const tz = typeof req.body?.timeZone === 'string' ? req.body.timeZone : null;
@@ -262,47 +246,22 @@ router.post('/board/cast', (req: Request, res: Response) => {
     return evaluateCastingRule(settings.castingRulesToday, task, labelNames, listNames, localHour, localWeekday, todayYmd, tomorrowYmd);
   });
 
-  const eligibleTomorrow = candidates.filter(task => {
-    const labelNames = task.labels.map(id => labelNameById.get(id)).filter(Boolean) as string[];
-    const listNames = listNamesByTaskId.get(task._id) || [];
-    return evaluateCastingRule(settings.castingRulesNext, task, labelNames, listNames, localHour, localWeekday, todayYmd, tomorrowYmd);
-  });
-
   // --- Today rule ---
-  // A task may only appear once per section — evict from Next before adding to Today.
   const todayCards = findAllCards({ listId: todayList._id });
   const todayTaskIds = new Set(todayCards.map(c => c.taskId));
-  const nextCards = findAllCards({ listId: nextList._id });
-  const nextCardByTaskId = new Map(nextCards.map(c => [c.taskId, c]));
 
   const addedToday: ReturnType<typeof insertCard>[] = [];
   for (const task of eligibleToday) {
     if (!todayTaskIds.has(task._id)) {
-      // Remove from Next if already there (same task can't be in both)
-      const nextCard = nextCardByTaskId.get(task._id);
-      if (nextCard) deleteCard(nextCard._id);
       const inserted = insertCard({ taskId: task._id, listId: todayList._id });
       trackCommitmentTransition(task._id, null, todayList._id);
       addedToday.push(inserted);
     }
   }
 
-  // --- Next rule ---
-  // Refresh after evictions and insertions above
-  const nextCardsNow = findAllCards({ listId: nextList._id });
-  const nextTaskIds = new Set(nextCardsNow.map(c => c.taskId));
-  const todayTaskIdsUpdated = new Set([...todayTaskIds, ...addedToday.map(c => c.taskId)]);
-
-  const addedNext: ReturnType<typeof insertCard>[] = [];
-  for (const task of eligibleTomorrow) {
-    if (!todayTaskIdsUpdated.has(task._id) && !nextTaskIds.has(task._id)) {
-      addedNext.push(insertCard({ taskId: task._id, listId: nextList._id }));
-    }
-  }
-
-  const listIds = [todayList._id, nextList._id];
+  const listIds = [todayList._id];
   broadcast('cards:bulk-updated', { listIds });
-  res.json({ listIds, addedToday: addedToday.length, addedNext: addedNext.length });
+  res.json({ listIds, addedToday: addedToday.length });
 });
 
 export default router;

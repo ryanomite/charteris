@@ -9,7 +9,7 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 router.put('/', (req: Request, res: Response) => {
-  const { hideCommittedCards, castingRulesToday, castingRulesNext, cssOverrides, viewPresets } = req.body || {};
+  const { hideCommittedCards, castingRulesToday, cssOverrides, viewPresets } = req.body || {};
 
   if (hideCommittedCards !== undefined && typeof hideCommittedCards !== 'boolean') {
     res.status(400).json({ error: 'hideCommittedCards must be a boolean' });
@@ -17,10 +17,6 @@ router.put('/', (req: Request, res: Response) => {
   }
   if (castingRulesToday !== undefined && typeof castingRulesToday !== 'string') {
     res.status(400).json({ error: 'castingRulesToday must be a string' });
-    return;
-  }
-  if (castingRulesNext !== undefined && typeof castingRulesNext !== 'string') {
-    res.status(400).json({ error: 'castingRulesNext must be a string' });
     return;
   }
   if (cssOverrides !== undefined && typeof cssOverrides !== 'string') {
@@ -40,7 +36,7 @@ router.put('/', (req: Request, res: Response) => {
     }
   }
 
-  const updated = updateGlobalSettings({ hideCommittedCards, castingRulesToday, castingRulesNext, cssOverrides, viewPresets });
+  const updated = updateGlobalSettings({ hideCommittedCards, castingRulesToday, cssOverrides, viewPresets });
   broadcast('settings:updated', updated);
   res.json(updated);
 });

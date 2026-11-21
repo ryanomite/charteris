@@ -93,7 +93,6 @@ export interface ViewPreset {
 export interface GlobalSettings {
   hideCommittedCards: boolean;
   castingRulesToday: string;
-  castingRulesNext: string;
   cssOverrides: string;
   viewPresets: ViewPreset[];
 }

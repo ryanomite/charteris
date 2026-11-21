@@ -14,7 +14,6 @@ const error = ref('');
 const hideCommittedCards = ref(false);
 const hideRainyDayCards = ref(false);
 const castingRulesToday = ref('');
-const castingRulesNext = ref('');
 const cssOverrides = ref('');
 const viewPresets = ref<IViewPreset[]>([]);
 
@@ -24,7 +23,6 @@ const newPresetIcon = ref('');
 const hasChanges = computed(() => (
   hideCommittedCards.value !== store.globalSettings.hideCommittedCards
   || castingRulesToday.value !== store.globalSettings.castingRulesToday
-  || castingRulesNext.value !== store.globalSettings.castingRulesNext
   || cssOverrides.value !== store.globalSettings.cssOverrides
   || JSON.stringify(viewPresets.value) !== JSON.stringify(store.globalSettings.viewPresets || [])
 ));
@@ -36,7 +34,6 @@ watch(
     error.value = '';
     hideCommittedCards.value = store.globalSettings.hideCommittedCards;
     castingRulesToday.value = store.globalSettings.castingRulesToday;
-    castingRulesNext.value = store.globalSettings.castingRulesNext;
     cssOverrides.value = store.globalSettings.cssOverrides;
     viewPresets.value = [...(store.globalSettings.viewPresets || [])];
   },
@@ -50,7 +47,6 @@ async function save() {
     await store.updateGlobalSettings({
       hideCommittedCards: hideCommittedCards.value,
       castingRulesToday: castingRulesToday.value.trim(),
-      castingRulesNext: castingRulesNext.value.trim(),
       cssOverrides: cssOverrides.value,
       viewPresets: viewPresets.value,
     });
@@ -133,17 +129,6 @@ function close() {
               rows="3"
               class="setting-input"
               placeholder="priority === 1 || isOverdue() || isDueToday()"
-            ></textarea>
-          </div>
-
-          <div class="setting-block">
-            <label for="casting-next">Casting Rule: Next</label>
-            <textarea
-              id="casting-next"
-              v-model="castingRulesNext"
-              rows="3"
-              class="setting-input"
-              placeholder="isDueTomorrow()"
             ></textarea>
           </div>
 

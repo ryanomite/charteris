@@ -265,15 +265,6 @@ function expandAll() {
 
 onMounted(() => {
   window.addEventListener('charteris:quick-add', handleQuickAdd);
-
-  // Auto-condense Next list cards on initial render
-  if (props.list.name === 'Next') {
-    nextTick(() => {
-      document.querySelectorAll(`.card[data-list-id="${props.list._id}"]`).forEach(el => {
-        el.classList.add('condensed');
-      });
-    });
-  }
 });
 
 onUnmounted(() => {

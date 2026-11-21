@@ -166,10 +166,7 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
             const card = store.cards.find(c => c._id === ids[0]);
             const list = card ? store.lists.find(l => l._id === card.listId) : null;
             if (list?.name === 'Today') {
-              // Today → move to Next
-              moveCard(ids[0], () => findListByNameInSection('planning', 'Next'));
-            } else if (list?.name === 'Next') {
-              // Next → move to first Board list
+              // Today → move to first Board list
               moveCard(ids[0], () => findFirstBoardList());
             } else {
               navigate('right');
