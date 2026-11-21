@@ -99,14 +99,10 @@ export function useKeyboardShortcuts(openCard: (card: ICard) => void) {
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-    // Q shortcut: quick add card (works without selection)
+    // Q shortcut: quick add modal
     if (e.key === 'q' || e.key === 'Q') {
       e.preventDefault();
-      if (store.lastInteractedListId.value) {
-        window.dispatchEvent(new CustomEvent('charteris:quick-add', { detail: { listId: store.lastInteractedListId.value } }));
-      } else {
-        window.dispatchEvent(new CustomEvent('charteris:quick-add-modal'));
-      }
+      window.dispatchEvent(new CustomEvent('charteris:quick-add-modal'));
       return;
     }
 

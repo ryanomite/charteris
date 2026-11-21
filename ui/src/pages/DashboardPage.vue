@@ -11,11 +11,15 @@ import NotesSection from '../components/NotesSection.vue';
 import StatisticsSection from '../components/StatisticsSection.vue';
 import TaskEditModal from '../components/TaskEditModal.vue';
 import TaskImportModal from '../components/TaskImportModal.vue';
+import QuickAddModal from '../components/QuickAddModal.vue';
 import GlobalSettingsModal from '../components/GlobalSettingsModal.vue';
 import type { ICard } from '../types';
 
 const store = useTaskStore();
 const editingCard = ref<ICard | null>(null);
+function openQuickAdd() {
+  window.dispatchEvent(new CustomEvent('charteris:quick-add-modal'));
+}
 const hiddenSlugs = ref(new Set<string>());
 const filterQuery = ref('');
 const statsVisible = ref(false);
@@ -198,7 +202,7 @@ onUnmounted(() => {
   <component :is="'style'" v-if="cssOverrides">{{ cssOverrides }}</component>
   <div class="app-shell" v-if="!store.loading">
     <header class="app-header">
-      <img src="/charteris-white.svg" alt="Charteris" class="app-header__logo" />
+      <img src="/charteris-white.svg" alt="Charteris" class="app-header__logo" @click="openQuickAdd" />
     </header>
     <div class="dashboard">
       <NotesSection v-show="notesVisible" @hide="notesVisible = false" />
@@ -234,6 +238,7 @@ onUnmounted(() => {
   />
   <TaskEditModal :card="editingCard" @close="editingCard = null" @open="openCard" />
   <TaskImportModal :open="importOpen" :target-list-id="importTargetListId" @close="closeImport" />
+  <QuickAddModal />
   <GlobalSettingsModal :open="globalSettingsOpen" @close="closeGlobalSettings" />
 </template>
 
@@ -254,6 +259,7 @@ onUnmounted(() => {
 .app-header__logo {
   height: 47px;
   opacity: 0.92;
+  cursor: pointer;
   filter: drop-shadow(0 0 6px rgba(0, 230, 230, 0.95)) drop-shadow(0 0 18px rgba(0, 210, 220, 0.8)) drop-shadow(0 0 40px rgba(0, 180, 210, 0.6));
 }
 
