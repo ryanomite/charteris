@@ -15,6 +15,8 @@ import {
 import {
   findAllLabels, insertLabel as createLabel,
 } from '../queries/labels';
+import { findNotes, updateNotes } from '../queries/notes';
+import { broadcast } from '../ws';
 
 export function createMcpServer(): McpServer {
   const server = new McpServer({
@@ -261,6 +263,20 @@ export function createMcpServer(): McpServer {
     const order = maxListOrder(args.sectionId) + 1;
     const list = insertList({ name: args.name, sectionId: args.sectionId, order, isFixed: false });
     return { content: [{ type: 'text' as const, text: JSON.stringify(list, null, 2) }] };
+  });
+
+  // --- Notes tools ---
+  server.tool('get_notes', 'Get the current notes (markdown content)', {}, async () => {
+    const notes = findNotes();
+    return { content: [{ type: 'text' as const, text: JSON.stringify(notes, null, 2) }] };
+  });
+
+  server.tool('update_notes', 'Replace the notes content (markdown)', {
+    content: z.string(),
+  }, async (args) => {
+    const updated = updateNotes(args.content);
+    broadcast('notes:updated', updated);
+    return { content: [{ type: 'text' as const, text: JSON.stringify(updated, null, 2) }] };
   });
 
   return server;

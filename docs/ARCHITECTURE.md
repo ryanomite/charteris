@@ -374,6 +374,8 @@ The MCP server is available at `POST /mcp` using Streamable HTTP transport. Sess
 | `create_label` | `name` | Create a label |
 | `list_lists` | `sectionId?` | List all lists or filter by section |
 | `create_list` | `name`, `sectionId` | Create a list (Board section only) |
+| `get_notes` | none | Get the current notes (markdown content) |
+| `update_notes` | `content` | Replace the notes content (markdown) |
 
 **Note:** The MCP `move_card` tool performs a simple move (update listId + order), unlike the API's `PATCH /cards/:id/move` which has cross-section duplication logic. MCP tools also do not broadcast WebSocket events.
 
