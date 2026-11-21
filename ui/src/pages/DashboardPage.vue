@@ -19,7 +19,7 @@ const editingCard = ref<ICard | null>(null);
 const hiddenSlugs = ref(new Set<string>());
 const filterQuery = ref('');
 const statsVisible = ref(false);
-const notesVisible = ref(true);
+const notesVisible = ref(false);
 const focusMode = ref(false);
 provide('filterQuery', filterQuery);
 provide('focusMode', focusMode);
@@ -31,7 +31,7 @@ function readFragment() {
   return {
     hiddenSlugs: new Set(params.get('h')?.split(',').filter(Boolean) ?? []),
     statsVisible: params.get('stats') === '1',
-    notesVisible: params.get('notes') !== '0',
+    notesVisible: params.get('notes') === '1',
     focusMode: params.get('focus') === '1',
     filterQuery: params.get('q') ?? '',
   };
@@ -42,7 +42,7 @@ function writeFragment() {
   const hidden = [...hiddenSlugs.value];
   if (hidden.length) params.set('h', hidden.join(','));
   if (statsVisible.value) params.set('stats', '1');
-  if (!notesVisible.value) params.set('notes', '0');
+  if (notesVisible.value) params.set('notes', '1');
   if (focusMode.value) params.set('focus', '1');
   if (filterQuery.value) params.set('q', filterQuery.value);
   const hash = params.toString();
