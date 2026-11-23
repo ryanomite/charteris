@@ -121,6 +121,19 @@ export const useTaskStore = defineStore('tasks', () => {
         const pA = rank(taskA?.priority);
         const pB = rank(taskB?.priority);
         if (pA !== pB) return pA - pB;
+
+        // Within the same priority, surface "5min"/"top" labeled tasks first.
+        const isQuick = (task: ITask | undefined) => {
+          if (!task?.labels?.length) return 0;
+          return task.labels.some(id => {
+            const name = labelById(id)?.name?.toLowerCase();
+            return name === '5min' || name === 'top';
+          }) ? 0 : 1;
+        };
+        const qA = isQuick(taskA);
+        const qB = isQuick(taskB);
+        if (qA !== qB) return qA - qB;
+
         return a.order - b.order;
       });
   }
