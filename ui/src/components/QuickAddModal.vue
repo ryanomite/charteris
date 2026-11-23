@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '../stores/taskStore';
 import api from '../services/api';
 import { parseTaskMacros } from '../utils/taskMacros';
@@ -12,6 +12,22 @@ const text = ref('');
 const inputRef = ref<HTMLInputElement | null>(null);
 const submitting = ref(false);
 const error = ref('');
+
+const topLabels = computed(() => {
+  const counts = new Map<string, number>();
+  for (const t of store.tasks) {
+    for (const lid of t.labels || []) counts.set(lid, (counts.get(lid) || 0) + 1);
+  }
+  return [...store.labels]
+    .sort((a, b) => (counts.get(b._id) || 0) - (counts.get(a._id) || 0))
+    .slice(0, 8);
+});
+
+function appendMacro(macro: string) {
+  const trimmed = text.value.trimEnd();
+  text.value = trimmed ? `${trimmed} ${macro}` : macro;
+  nextTick(() => inputRef.value?.focus());
+}
 
 function reset() {
   text.value = '';
@@ -134,6 +150,17 @@ onUnmounted(() => {
             @keydown.enter.prevent="submit"
             @keydown.escape.prevent="close"
           />
+          <div class="modal__macros">
+            <button
+              v-for="label in topLabels"
+              :key="label._id"
+              type="button"
+              class="modal__macro"
+              @click="appendMacro('@' + label.name)"
+            >@{{ label.name }}</button>
+            <button type="button" class="modal__macro" @click="appendMacro('#home')">#home</button>
+            <button type="button" class="modal__macro" @click="appendMacro('#alarm')">#alarm</button>
+          </div>
           <p v-if="error" class="modal__error">{{ error }}</p>
         </div>
         <div class="modal__footer">
@@ -207,6 +234,27 @@ onUnmounted(() => {
   margin: 0;
   color: #ff7070;
   font-size: 0.85rem;
+}
+
+.modal__macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.modal__macro {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background var(--transition-default), color var(--transition-default);
+}
+
+.modal__macro:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
 }
 .modal__footer {
   display: flex;

@@ -95,7 +95,7 @@ const filteredCards = computed(() => {
       : matchesGroup(task, groups[0]);
   });
 });
-const activeCardCount = computed(() => store.activeCardCountForList(props.list._id));
+const activeCardCount = computed(() => filteredCards.value.length);
 const listSemanticClass = computed(() => `list-${toClassSlug(props.list.name)}`);
 
 const dropIndex = ref(-1);

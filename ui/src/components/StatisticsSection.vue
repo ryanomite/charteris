@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Line } from 'vue-chartjs';
 import {
   Chart as ChartJS,
@@ -12,10 +12,12 @@ import {
   Legend,
 } from 'chart.js';
 import api from '../services/api';
+import { useTaskStore } from '../stores/taskStore';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const emit = defineEmits<{ (e: 'hide'): void }>();
+const store = useTaskStore();
 
 interface StatsData {
   dates: string[];
@@ -51,9 +53,17 @@ async function fetchStats() {
   }
 }
 
+const completedTaskCount = computed(() => store.tasks.filter(t => t.completed).length);
+
 onMounted(() => {
   fetchStats();
   pollTimer = setInterval(fetchStats, 3_600_000);
+  let prevCompletedCount = completedTaskCount.value;
+  watch(completedTaskCount, (newVal) => {
+    if (newVal === prevCompletedCount) return;
+    prevCompletedCount = newVal;
+    fetchStats();
+  });
 });
 
 onUnmounted(() => {
@@ -166,6 +176,20 @@ const completionTrend = computed<'up' | 'down' | null>(() => {
   return null;
 });
 const currentDayCommitments = computed(() => data.value?.commitments.at(-1) ?? 0);
+const remainingCommitments = computed(() => {
+  const planning = store.sections.find(s => s.slug === 'planning');
+  if (!planning) return 0;
+  const todayList = store.lists.find(l => l.sectionId === planning._id && l.name.toLowerCase() === 'today');
+  if (!todayList) return 0;
+  let n = 0;
+  for (const c of store.cards) {
+    if (c.listId !== todayList._id) continue;
+    const task = store.taskById(c.taskId);
+    if (!task || task.completed || task.archived) continue;
+    n += 1;
+  }
+  return n;
+});
 
 const percentChartData = computed(() => ({
   labels: data.value?.dates.map(d => d.slice(5)) ?? [],
@@ -289,6 +313,10 @@ const burndownChartOptions = computed(() => ({
           <article class="stats-section__summary-card">
             <span class="stats-section__summary-label">Current day commitments</span>
             <strong class="stats-section__summary-value">{{ currentDayCommitments }}</strong>
+          </article>
+          <article class="stats-section__summary-card">
+            <span class="stats-section__summary-label">Remaining commitments</span>
+            <strong class="stats-section__summary-value">{{ remainingCommitments }}</strong>
           </article>
         </div>
 
